@@ -237,3 +237,54 @@ window.addEventListener('pagehide',event=>{
 updateUtility();
 selectHeroMedia();
 
+
+// The landing is a still first screen: at the top of the page, wheel, touch and keys do
+// not scroll down into the film. The buttons still move the page in script (Film, the skip
+// link), which unlocks it; scrolling back up to the top locks it again.
+function updateScrollLock() {
+  document.documentElement.classList.toggle('landing-scroll-locked', scrollY < 2);
+}
+addEventListener('scroll',updateScrollLock,{passive:true});
+updateScrollLock();
+
+// Hover tick on "Explore the E-Boat", modelled on unseen.co's button hover sound: a soft
+// ~1.4 kHz tone with a quick pitch dip, held for ~4 ms, mostly gone by 9 ms, with a faint
+// tail to ~35 ms. Synthesised here rather than reusing their recording. Like theirs it
+// follows the site sound: silent until the visitor turns sound on (the click that does so is
+// also what lets the browser start audio), and it skips touch, where there is no hover.
+let uiAudio = null;
+function startUiAudio() {
+  const Context = window.AudioContext || window.webkitAudioContext;
+  if (!Context) return null;
+  uiAudio ??= new Context();
+  if (uiAudio.state === 'suspended') uiAudio.resume();
+  return uiAudio;
+}
+utility.addEventListener('click',()=>{ if (utilityMode === 'sound' && !video.muted) startUiAudio(); });
+
+function playHoverTick() {
+  if (utilityMode !== 'sound' || video.muted) return;
+  const audio = startUiAudio();
+  if (!audio || audio.state !== 'running') return;
+  const t = audio.currentTime + .005;
+  const tone = audio.createOscillator();
+  tone.type = 'sine';
+  tone.frequency.setValueAtTime(1340,t);
+  tone.frequency.linearRampToValueAtTime(1470,t + .002);
+  tone.frequency.exponentialRampToValueAtTime(1130,t + .007);
+  tone.frequency.exponentialRampToValueAtTime(1460,t + .010);
+  tone.frequency.exponentialRampToValueAtTime(1340,t + .016);
+  const level = audio.createGain();
+  level.gain.setValueAtTime(.0001,t);
+  level.gain.exponentialRampToValueAtTime(.08,t + .0015);
+  level.gain.linearRampToValueAtTime(.07,t + .004);
+  level.gain.exponentialRampToValueAtTime(.004,t + .0085);
+  level.gain.exponentialRampToValueAtTime(.0025,t + .026);
+  level.gain.exponentialRampToValueAtTime(.0001,t + .034);
+  tone.connect(level).connect(audio.destination);
+  tone.start(t);
+  tone.stop(t + .04);
+}
+document.querySelector('.landing-primary').addEventListener('pointerenter',event=>{
+  if (event.pointerType === 'mouse') playHoverTick();
+});

@@ -161,3 +161,4 @@ body.landing-menu-active:not(.landing-menu-open) .landing-root{transition-durati
   .landing-ocean .landing-title{font-size:clamp(48px,9.6vw,66px)}
   .landing-ocean .landing-primary{margin-top:22px}
 }
+html.landing-scroll-locked{overflow:hidden;overscroll-behavior:none}

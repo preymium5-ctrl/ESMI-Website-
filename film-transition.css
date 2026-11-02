@@ -1,0 +1,12 @@
+/* Film button → camera dives into the helm → its screen becomes the film. */
+.film-transit{position:fixed;inset:0;z-index:9999;overflow:hidden;cursor:pointer;background:transparent}
+.film-transit-fly{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .25s linear}
+.film-transit-screen{position:absolute;inset:0;opacity:0;will-change:clip-path,opacity}
+.film-transit-screen img{display:block;width:100%;height:100%;object-fit:cover}
+.film-transit-glow{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at var(--ft-x,50%) var(--ft-y,50%),#ffffffd9,#ffffff00 32%)}
+.film-transit-skip{position:absolute;right:28px;bottom:26px;padding:9px 18px;border-radius:40px;font:inherit;font-size:14px;color:#fff;background:#0a2a3d40;backdrop-filter:blur(6px);border:1px solid #ffffff59;opacity:0;transition:opacity .4s .6s}
+.film-transit.is-on .film-transit-skip{opacity:1}
+body.film-transit-active #landing :is(.landing-copy,.landing-header,.landing-bottom-left,.landing-globe,.landing-copyright,.landing-cursor){opacity:0;transition:opacity .35s ease}
+body.film-transit-active{overflow:hidden}
+#landing.film-transit-zooming{will-change:transform,filter}
+.film-transit-bezel{position:absolute;box-sizing:border-box;border:4px solid #121417;opacity:0;pointer-events:none;box-shadow:0 0 0 1px #ffffff26 inset,0 18px 50px #0000004d,0 0 60px #ffffff40}

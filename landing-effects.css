@@ -1,0 +1,42 @@
+.landing-refraction{position:absolute;inset:0;z-index:2;display:block;width:100%;height:100%;opacity:0;pointer-events:none}
+.landing-refraction.is-ready{opacity:1}
+  /* Identical perspective on every layer prevents a video/canvas handoff jump. */
+  .landing-root[data-pointer-ready="true"] .landing-media>:is(.landing-poster,.landing-video,.landing-refraction){
+    transform:perspective(var(--landing-projection-distance,1500px)) rotateX(calc(-1 * var(--landing-view-pitch,0deg))) rotateY(var(--landing-view-yaw,0deg));
+    transform-origin:50% 50%;
+    backface-visibility:hidden;
+  }
+  /* JS eases the pointer offset; the drawer owns its independent scene shift. */
+  .landing-root[data-pointer-ready="true"] .landing-media{
+    transform:translate3d(calc(var(--landing-view-x,0px) + var(--landing-menu-shift-x,0px)),var(--landing-view-y,0px),0) scale(var(--landing-camera-scale,1.1));
+    transition:none;
+    will-change:transform;
+  }
+  .landing-root[data-pointer-ready="true"] .landing-copy{
+    translate:var(--landing-copy-x,0px) var(--landing-copy-y,0px);
+    transform:translate(-50%,var(--landing-copy-base-y,-49%)) perspective(1500px) rotateY(var(--landing-copy-yaw,0deg)) rotateX(var(--landing-copy-pitch,0deg));
+    transform-origin:50% 50%;
+    will-change:translate,transform;
+  }
+  /* Individual translate leaves each control's authored hover transform intact. */
+  .landing-root[data-pointer-ready="true"] :is(button,a[href]){
+    translate:var(--landing-magnet-x,0px) var(--landing-magnet-y,0px);
+  }
+  .landing-root[data-pointer-ready="true"] .landing-cursor{
+    display:block;
+    width:42px;height:42px;margin:-21px 0 0 -21px;
+    border:1px solid #252427a6;background:#fff0;
+    transform:translate3d(var(--landing-cursor-x,-100px),var(--landing-cursor-y,-100px),0) scale(var(--landing-cursor-scale,1));
+    transition:opacity .2s,border-color .2s,background-color .2s;
+    will-change:transform;
+  }
+  .landing-root[data-cursor-mode="control"] .landing-cursor{border-color:#25242769;background:#fff2}
+  .landing-root[data-pointer-ready="true"].landing-pointer-active,
+  .landing-root[data-pointer-ready="true"].landing-pointer-active :is(button,a[href]){cursor:none}
+@media(max-width:760px){
+  .landing-root{--landing-copy-base-y:-50%}
+}
+@media(prefers-reduced-motion:reduce){
+  .landing-refraction{display:none}
+  .landing-copy,.landing-root :is(button,a[href]){translate:none}
+}

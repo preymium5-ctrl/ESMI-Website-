@@ -1,0 +1,12 @@
+{
+  "name": "esmi-studio-to-sea",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "An independent ESMI cinematic assembly experience",
+  "scripts": {
+    "dev": "node server.mjs",
+    "check": "node --check app.js && node --check landing.js && node --check landing-effects.js && node --check server.mjs",
+    "test": "node --test tests/*.test.mjs"
+  }
+}

@@ -1,0 +1,13 @@
+node_modules/
+.preview/
+reference/
+*-production.jpg
+
+# Working files kept on the build machine only (raw footage, drafts, renders).
+assets/source/
+assets/v2/esmi-film.mp4
+assets/film-v3/part*.mp4
+assets/film-v3/part*-start.png
+scripts/__pycache__/
+scripts/blender/preview/
+*-preview.jpg

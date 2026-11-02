@@ -1,0 +1,15 @@
+/* SVG exploded assembly layer (svg-assembly.js) */
+.esmi-exploded{position:absolute;inset:0;background:#f5f3ee;pointer-events:none;transition:opacity .25s linear}
+.esmi-exploded-svg{position:absolute;display:block;overflow:visible}
+.esmi-guides path{fill:none;stroke:#6f8c7e;stroke-width:1.1;stroke-dasharray:3 6;stroke-linecap:round}
+.esmi-fx circle{fill:none;stroke:var(--sea,#197977);stroke-width:1.6}
+.esmi-callouts{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.esmi-callout{position:absolute;left:0;top:0;opacity:0;will-change:transform,opacity}
+.esmi-callout i{position:absolute;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;background:var(--sea,#197977);box-shadow:0 0 0 4px #19797724}
+.esmi-callout svg{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible}
+.esmi-callout line{stroke:var(--sea,#197977);stroke-width:.8}
+.esmi-callout span{position:absolute;left:var(--dx);top:var(--dy);transform:translate(8px,-50%);padding:4px 8px;border-radius:20px;background:#f5f3eee6;border:1px solid #9eb09e66;font-family:var(--sans);font-size:8px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink,#283b36);white-space:nowrap}
+.esmi-callout.to-left span{transform:translate(calc(-100% - 8px),-50%)}
+.has-svg-assembly #assembly-canvas{background-image:none}
+@media(max-width:760px){.esmi-callout span{font-size:6px;padding:3px 6px;letter-spacing:1px}}
+@media(prefers-reduced-motion:reduce){.esmi-exploded{transition:none}}

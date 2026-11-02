@@ -1,0 +1,61 @@
+/* ESMI fullscreen advertisement: no chrome, designed captions, logo outro. */
+html.film-fullscreen body.is-film :is(.site-header,.chapter-rail,#film-copy,#film-controls,.corner-caption,.technical-orbit,.scene-bottom,.scene-shade,.loading-status){opacity:0!important;visibility:hidden!important;pointer-events:none!important;transition:opacity .5s,visibility 0s .5s}
+html.film-fullscreen body.is-film #stage{background:#05141b}
+html.film-fullscreen body.is-film .media-stage canvas{background-image:none}
+.film-ad{position:absolute;inset:0;z-index:30;pointer-events:none;opacity:0;transition:opacity .6s;font-family:'Landing Neue',Manrope,Arial,sans-serif;color:#fff}
+html.film-fullscreen body.is-film .film-ad{opacity:1}
+.film-ad-shade{position:absolute;inset:0;background:linear-gradient(0deg,#03141ccc 0%,#03141c55 22%,#03141c00 46%),linear-gradient(90deg,#03141c66,#03141c00 45%);opacity:0;transition:opacity 1s}
+.film-ad.has-caption .film-ad-shade{opacity:1}
+
+/* Lower-third caption */
+.film-ad-caption{position:absolute;left:clamp(22px,5.2vw,96px);bottom:clamp(48px,10vh,120px);width:min(640px,80vw)}
+.film-ad-card{position:absolute;left:0;bottom:0;width:100%}
+.film-ad-kicker{display:flex;align-items:center;gap:14px;margin:0 0 16px;font-size:clamp(10px,.78vw,13px);letter-spacing:.24em;text-transform:uppercase;font-weight:500;color:#d7f3f1}
+.film-ad-kicker i{display:block;width:44px;height:1px;background:#5fd3cb;transform:scaleX(0);transform-origin:left;transition:transform .9s cubic-bezier(.19,1,.22,1)}
+.film-ad-kicker span{opacity:0;transform:translateX(-8px);transition:opacity .6s .15s,transform .9s .15s cubic-bezier(.19,1,.22,1)}
+.film-ad-title{margin:0;font-weight:400;font-size:clamp(38px,4.6vw,86px);line-height:.98;letter-spacing:-.045em;text-shadow:0 2px 30px #02101640}
+.film-ad-title em{font-family:'Landing Saol','Times New Roman',serif;font-style:italic;font-weight:300;letter-spacing:-.035em}
+.film-ad-line{display:block;overflow:hidden;padding:.04em 0 .1em}
+.film-ad-line>span{display:inline-block;transform:translateY(112%);transition:transform 1.05s cubic-bezier(.19,1,.22,1)}
+.film-ad-sub{margin:18px 0 0;font-size:clamp(13px,1vw,17px);line-height:1.55;color:#e8f4f3d9;max-width:420px;opacity:0;transform:translateY(10px);transition:opacity .8s .45s,transform 1s .45s cubic-bezier(.19,1,.22,1)}
+.film-ad-card.is-in .film-ad-kicker i{transform:scaleX(1)}
+.film-ad-card.is-in .film-ad-kicker span{opacity:1;transform:none}
+.film-ad-card.is-in .film-ad-line>span{transform:none}
+.film-ad-card.is-in .film-ad-line:nth-child(2)>span{transition-delay:.12s}
+.film-ad-card.is-in .film-ad-sub{opacity:1;transform:none}
+.film-ad-card.is-out{opacity:0;transform:translateY(-10px);transition:opacity .45s,transform .6s}
+
+/* Logo outro */
+.film-ad-outro{position:absolute;inset:0;display:grid;place-items:center;align-content:center;gap:clamp(14px,2vh,24px);text-align:center;opacity:0;transition:opacity .8s}
+.film-ad-outro::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 42%,#03141c33,#03141ca6 75%),#03141c26;opacity:0;transition:opacity 1.4s}
+.film-ad.is-outro .film-ad-outro{opacity:1}
+.film-ad.is-outro .film-ad-outro::before{opacity:1}
+.film-ad-logo{position:relative;display:flex;align-items:center;gap:clamp(14px,1.6vw,26px)}
+.film-ad-lockup{display:block;width:clamp(240px,35vw,620px);height:auto;overflow:visible}
+.film-ad-lockup .esmi-logo-mark path{clip-path:inset(0 100% 0 0);transition:clip-path 1.1s cubic-bezier(.65,0,.35,1)}
+.film-ad.is-outro .film-ad-lockup .esmi-logo-mark path{clip-path:inset(0 0 0 0)}
+.film-ad-lockup .esmi-logo-mark [data-wave="middle"]{transition-delay:.18s}
+.film-ad-lockup .esmi-logo-mark [data-wave="bottom"]{transition-delay:.36s}
+.film-ad-lockup .esmi-logo-letter{opacity:0;transform:translateY(14px);transition:opacity .8s,transform 1.1s cubic-bezier(.19,1,.22,1)}
+.film-ad.is-outro .film-ad-lockup .esmi-logo-letter{opacity:1;transform:translateY(0)}
+.film-ad-lockup .esmi-logo-letter:nth-child(1){transition-delay:.55s}
+.film-ad-lockup .esmi-logo-letter:nth-child(2){transition-delay:.63s}
+.film-ad-lockup .esmi-logo-letter:nth-child(3){transition-delay:.71s}
+.film-ad-lockup .esmi-logo-letter:nth-child(4){transition-delay:.79s}
+.film-ad-mark{width:clamp(64px,7vw,120px);height:auto;overflow:visible}
+.film-ad-word{display:flex;font-family:Manrope,'Segoe UI',Arial,sans-serif;font-weight:800;font-size:clamp(58px,7.4vw,132px);letter-spacing:-.04em;line-height:.9;overflow:hidden;padding-bottom:.06em}
+.film-ad-word span{display:inline-block;transform:translateY(105%);transition:transform 1.1s cubic-bezier(.19,1,.22,1)}
+.film-ad.is-outro .film-ad-word span{transform:none}
+.film-ad.is-outro .film-ad-word span:nth-child(1){transition-delay:.55s}
+.film-ad.is-outro .film-ad-word span:nth-child(2){transition-delay:.63s}
+.film-ad.is-outro .film-ad-word span:nth-child(3){transition-delay:.71s}
+.film-ad.is-outro .film-ad-word span:nth-child(4){transition-delay:.79s}
+.film-ad-rule{position:relative;width:clamp(120px,16vw,260px);height:1px;background:#ffffff73;transform:scaleX(0);transition:transform 1.2s 1.1s cubic-bezier(.19,1,.22,1)}
+.film-ad.is-outro .film-ad-rule{transform:scaleX(1)}
+.film-ad-tag{position:relative;margin:0;font-size:clamp(11px,.9vw,15px);letter-spacing:.32em;color:#e4f6f4;opacity:0;transition:opacity 1s 1.5s}
+.film-ad-line2{position:relative;margin:0;font-size:clamp(22px,2.1vw,38px);letter-spacing:-.03em;opacity:0;transform:translateY(10px);transition:opacity 1s 2s,transform 1.2s 2s cubic-bezier(.19,1,.22,1)}
+.film-ad-line2 em{font-family:'Landing Saol','Times New Roman',serif;font-style:italic;font-weight:300}
+.film-ad.is-outro :is(.film-ad-tag,.film-ad-line2){opacity:1;transform:none}
+
+@media(max-width:760px){.film-ad-caption{left:22px;right:22px;bottom:96px}.film-ad-title{font-size:clamp(34px,10vw,52px)}.film-ad-word{font-size:clamp(52px,16vw,84px)}}
+@media(prefers-reduced-motion:reduce){.film-ad *{transition-duration:.01s!important;transition-delay:0s!important}}

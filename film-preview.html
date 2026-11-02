@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ESMI — From the sun. To the sea.</title>
+  <link rel="stylesheet" href="./film-ad.css">
+  <style>
+    @font-face{font-family:Landing Neue;src:url('./assets/fonts/NeueMontreal-Regular.woff2') format('woff2');font-display:swap}
+    @font-face{font-family:Landing Saol;src:url('./assets/fonts/SaolDisplay-LightItalic.woff2') format('woff2');font-weight:300;font-style:italic;font-display:swap}
+    *{box-sizing:border-box}body{margin:0;background:#05141b;color:#fff;font-family:Landing Neue,Arial,sans-serif}
+    #stage{position:relative;width:100%;height:100svh;min-height:320px;overflow:hidden;background:#05141b}
+    #cinematic-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+    .film-back{position:absolute;z-index:50;left:clamp(18px,2.6vw,40px);top:clamp(18px,2.6vw,40px);display:inline-flex;align-items:center;min-height:44px;padding:10px 18px;border:1px solid #ffffff59;border-radius:30px;background:#03141c33;backdrop-filter:blur(6px);color:#fff;text-decoration:none;font-size:13px;letter-spacing:.04em}
+    .film-back:hover{background:#ffffff18}.film-back:focus-visible{outline:2px solid #7fe3dc;outline-offset:4px}
+    .film-ad-end{bottom:76px}
+    .film-message{position:absolute;z-index:40;left:20px;right:20px;top:45%;text-align:center;color:#d7f3f1;font-size:15px;line-height:1.6}
+    .film-message[hidden]{display:none}
+  </style>
+</head>
+<body class="is-film">
+  <main id="stage" aria-label="The ESMI film">
+    <video id="cinematic-video" controls muted playsinline preload="metadata" poster="./assets/film-v3/poster.jpg" aria-label="ESMI — From the sun. To the sea."></video>
+    <a class="film-back" id="restart" href="./">Back to ESMI ↖</a>
+    <p class="film-message" id="film-message" role="status">Loading the ESMI film…</p>
+    <button type="button" id="replay" hidden>Replay film</button>
+  </main>
+  <script type="module">
+    const film=document.querySelector('#cinematic-video');
+    const message=document.querySelector('#film-message');
+    const showError=()=>{message.hidden=false;message.textContent='The film is not available yet. Please try again shortly.';};
+    film.addEventListener('loadedmetadata',()=>{message.hidden=true;});
+    film.addEventListener('error',showError);
+    document.querySelector('#replay').addEventListener('click',()=>{
+      film.currentTime=0;
+      film.play().catch(()=>{message.hidden=false;message.textContent='Press play to begin.';});
+    });
+    try{
+      const response=await fetch('./assets/v2/assembly.json');
+      if(!response.ok)throw new Error('Film configuration unavailable');
+      const {film:config}=await response.json();
+      window.ESMI_FILM_CONFIG=config;
+      film.poster=config.poster;
+      film.src=config.src;
+      film.load();
+      await import('./film-ad.js');
+    }catch(error){console.warn('[film] Unable to load film',error);showError();}
+  </script>
+</body>
+</html>

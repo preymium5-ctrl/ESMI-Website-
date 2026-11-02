@@ -443,22 +443,19 @@ def build_model(M):
     SZ, SX0, SX1, SY = 2.4, -2.95, 2.35, 1.8
     edges = [(box((SX0 + SX1) / 2, SY, SZ, SX1 - SX0, .07, .08), (0, .9, 1.4)), (box((SX0 + SX1) / 2, -SY, SZ, SX1 - SX0, .07, .08), (0, -.9, 1.4)),
              (box(SX0, 0, SZ, .07, 2 * SY, .08), (-.9, 0, 1.4)), (box(SX1, 0, SZ, .07, 2 * SY, .08), (.9, 0, 1.4))]
-    cols, rows = 4, 3
-    px, py = (SX1 - SX0) / cols, 2 * SY / rows
     for i, (solid, e) in enumerate(edges):
         objs = [make_mesh(f'canopy edge {i}', solid, M['solarEdge'], .01)]
         if i < 2:
             yy = SY if i == 0 else -SY
             objs += [make_mesh(f'canopy corner {i}a', box(SX0, yy, SZ, .1, .1, .09), M['knuckle'], .01), make_mesh(f'canopy corner {i}b', box(SX1, yy, SZ, .1, .1, .09), M['knuckle'], .01)]
-        if i == 0:
-            # Aluminium mullions that fill the gaps between the solar modules.
-            objs += [make_mesh(f'canopy mullion x{k}', box(SX0 + k * px + .015, 0, SZ, .06, 2 * SY, .065), M['solarEdge'], .006) for k in range(1, cols)]
-            objs += [make_mesh(f'canopy mullion y{k}', box((SX0 + SX1) / 2, -SY + k * py + .015, SZ, SX1 - SX0, .06, .065), M['solarEdge'], .006) for k in range(1, rows)]
         part(8, 'canopy-edge' if i == 0 else f'canopy-edge-{i}', objs, e, delay=i * .03, span=.2, layer=10, guide=i == 0)
+    cols, rows = 4, 3
+    px, py = (SX1 - SX0) / cols, 2 * SY / rows
     sp = 0
     for i in range(cols):
         for j in range(rows):
-            x0 = SX0 + i * px + .04; x1 = x0 + px - .05; y0 = -SY + j * py + .04; y1 = y0 + py - .05
+            # Modules fill their whole slot, so neighbours meet with no gap between them.
+            x0 = SX0 + i * px; x1 = x0 + px; y0 = -SY + j * py; y1 = y0 + py
             part(8, f'solar-module-{sp}', [make_mesh(f'solar module {sp}', box((x0 + x1) / 2, (y0 + y1) / 2, SZ, x1 - x0, y1 - y0, .05), M['solar'], .006)],
                  ((i - 1.5) * .45, (j - 1) * .7, 1.9 + sp * .03), rot=(2, (-1 if sp % 2 else 1) * .45), delay=.15 + sp * .055, span=.26, layer=10.5, guide=sp % 3 == 1)
             sp += 1

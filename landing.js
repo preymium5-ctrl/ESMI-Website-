@@ -24,7 +24,7 @@ let activeVariant = '';
 let mediaVersion = 0;
 let pendingPlaybackRatio = null;
 const menuPanel = menu.querySelector('.landing-menu-panel');
-const menuItems = [...menu.querySelectorAll('.landing-menu-navigation>button,.landing-menu-footer')];
+const menuItems = [...menu.querySelectorAll('.landing-menu-navigation>:is(button,a),.landing-menu-footer')];
 let menuVersion = 0;
 let menuAnimations = [];
 let menuTransition = Promise.resolve();
@@ -116,6 +116,8 @@ menu.addEventListener('close',()=>{
 document.querySelectorAll('[data-landing-action]').forEach(control=>{
   control.addEventListener('click',async event=>{
     const action = control.dataset.landingAction;
+    // Let real links open in a new tab or window as usual.
+    if (control.href && (event.ctrlKey || event.metaKey || event.shiftKey)) return;
     event.preventDefault();
     await closeMenu(false);
     if (action === 'index') {

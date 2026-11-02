@@ -36,8 +36,8 @@
 .eb-scroll{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;z-index:1;scrollbar-width:none;-webkit-overflow-scrolling:touch;user-select:none;-webkit-user-select:none}
 .eb-scroll img{-webkit-user-drag:none;user-drag:none}
 .eb-scroll::-webkit-scrollbar{display:none}
-.eb-grid{display:grid;grid-template-columns:1fr 1fr;gap:4.2vw 2.4vw;width:min(84vw,1180px);margin:0 auto;padding:clamp(170px,24vh,240px) 0 22vh;
-  transform:translate3d(calc(var(--eb-view-x,0px) + var(--eb-shake-x,0px)),var(--eb-view-y,0),0) skewX(var(--eb-skew,0deg)) perspective(1500px) rotateY(var(--eb-yaw,0deg)) rotateX(var(--eb-pitch,0deg)) scale(var(--eb-zoom,1))}
+.eb-grid{display:grid;grid-template-columns:1fr 1fr;gap:4.2vw 2.4vw;width:min(84vw,1180px);margin:0 auto;padding:clamp(170px,24vh,240px) 0 22vh}
+/* The WebGL scene owns the camera now (unseen-style); the DOM grid stays flat for hit-testing. */
 .eb-card{display:block;color:inherit;text-decoration:none;outline:none;will-change:transform,opacity}
 .eb-card[hidden]{display:none}
 .eb-float{display:block;will-change:transform}
@@ -45,6 +45,7 @@
 .eb-media img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .9s cubic-bezier(.22,1,.36,1)}
 .has-gl .eb-card.is-gl .eb-media{background:transparent}
 .has-gl .eb-card.is-gl .eb-media img{visibility:hidden}
+.has-gl .eb-card.is-gl .eb-meta{visibility:hidden}
 .eb-card:hover .eb-media img{transform:scale(1.06)}
 .eb-meta{position:relative;display:grid;grid-template-columns:1fr auto;padding:12px 0 11px;z-index:3}
 .eb-meta:after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;background:#e9f5f640;transform-origin:left;transition:transform .8s cubic-bezier(.22,1,.36,1),background .4s}
@@ -98,7 +99,9 @@
 .eb.eb-dragging .eb-cl-drag b:first-child{transform:translateY(-2px)}
 .eb.eb-dragging .eb-cl-drag b:last-child{transform:translateY(2px)}
 .eb.eb-dragging .eb-scroll{cursor:grabbing}
-@media(any-pointer:fine){.eb.eb-pointer,.eb.eb-pointer :is(a,button){cursor:none}}
+@media(any-pointer:fine){.eb.eb-pointer,.eb.eb-pointer :is(a,button){cursor:none}.eb.eb-pointer .eb-card{cursor:pointer}}
+/* Over a card the custom cursor hides and the normal pointer shows, as on unseen. */
+.eb[data-cursor-mode="card"]:not(.eb-dragging) .eb-cursor{opacity:0}
 .eb.is-entering .eb-head,.eb.is-entering .eb-card,.eb.is-entering .eb-close,.eb.is-entering .eb-filters{opacity:0}
 @media(max-width:760px){
   .eb-grid{grid-template-columns:1fr;width:88vw;gap:9vw;padding-top:190px}

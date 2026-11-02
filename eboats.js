@@ -92,7 +92,7 @@ function build() {
   flakeCanvas = $('.eb-flakes', root);
   flakeCtx = flakeCanvas.getContext('2d');
   root.querySelectorAll('.eb-pill').forEach(rollify);
-  cards = [...root.querySelectorAll('.eb-card')].map((el, i) => ({ el, float: $('.eb-float', el), media: $('.eb-media', el), img: $('img', el), tex: null, size: [1, 1], hover: 0, hoverTarget: 0, mouse: [.5, .5], shown: true, phase: i * 1.37, follow: 0, offset: 0, enter: 1 }));
+  cards = [...root.querySelectorAll('.eb-card')].map((el, i) => ({ el, float: $('.eb-float', el), media: $('.eb-media', el), meta: $('.eb-meta', el), img: $('img', el), tex: null, size: [1, 1], hover: 0, hoverTarget: 0, shown: true, depth: 0, fAlpha: 1, tweens: [] }));
   cards.forEach((card, i) => {
     card.el.addEventListener('click', event => { event.preventDefault(); choose(ITEMS[i]); });
     card.el.addEventListener('pointerenter', () => { card.hoverTarget = 1; });
@@ -173,11 +173,6 @@ function movePointer(event) {
   if (event.pointerType !== 'mouse' || reduced.matches) return;
   if (!pointer.seen) { pointer.x = event.clientX; pointer.y = event.clientY; pointer.seen = true; }
   pointer.tx = event.clientX; pointer.ty = event.clientY;
-  if (shake.lastX !== null) {
-    const dt = Math.max(4, event.timeStamp - shake.lastT);
-    shake.raw += ((event.clientX - shake.lastX) / dt * 1000 - shake.raw) * .5;   // px/s
-  }
-  shake.lastX = event.clientX; shake.lastT = event.timeStamp;
   root.classList.add('eb-pointer');
   view.tx = Math.max(-1, Math.min(1, (event.clientX / innerWidth - .5) * 2));
   view.ty = Math.max(-1, Math.min(1, (event.clientY / innerHeight - .5) * 2));
@@ -191,11 +186,6 @@ function movePointer(event) {
     const b = magnetic.getBoundingClientRect(), limit = magnetic.classList.contains('eb-close') ? 7 : 5;
     activeMagnet.tx = Math.max(-limit, Math.min(limit, (event.clientX - (b.left + b.width / 2 - activeMagnet.x)) * .18));
     activeMagnet.ty = Math.max(-limit, Math.min(limit, (event.clientY - (b.top + b.height / 2 - activeMagnet.y)) * .18));
-  }
-  for (const c of cards) {
-    if (!c.hoverTarget) continue;
-    const r = c.media.getBoundingClientRect();
-    c.mouse = [(event.clientX - r.left) / r.width, (event.clientY - r.top) / r.height];
   }
 }
 
@@ -220,7 +210,7 @@ function updateMotion(now) {
   pointer.vx = (nx - pointer.x) / dt; pointer.vy = (ny - pointer.y) / dt;
   pointer.x = nx; pointer.y = ny;
   const mode = root.dataset.cursorMode;
-  pointer.ts = drag?.moved ? 2.35 : drag ? .72 : mode === 'card' ? 2.1 : mode === 'control' ? 1.55 : 1;
+  pointer.ts = drag?.moved ? 2.35 : drag ? .72 : mode === 'card' ? .4 : mode === 'control' ? 1.55 : 1;
   pointer.scale += (pointer.ts - pointer.scale) * (1 - Math.exp(-dt / .08));
   cursorEl.style.transform = `translate3d(${pointer.x.toFixed(1)}px,${pointer.y.toFixed(1)}px,0)`;
   // The ring stretches along its direction of travel, like a drop moving through water.
@@ -245,68 +235,40 @@ function updateMotion(now) {
     m.x += (m.tx - m.x) * ease; m.y += (m.ty - m.y) * ease;
     m.el.style.translate = `${m.x.toFixed(2)}px ${m.y.toFixed(2)}px`;
   });
-  // Cards float gently, each on its own phase, and flow behind the scroll: every card
-  // chases the scroll position at its own pace (the right column and lower rows lag more),
-  // so the grid loosens while moving and settles back together when it stops.
-  const t = (now - startedAt) / 1000, st = scroller.scrollTop, h = innerHeight;
-  grid.style.transformOrigin = `50% ${(st + h / 2).toFixed(0)}px`;
-  for (const c of cards) {
-    c.hover += (c.hoverTarget - c.hover) * (1 - Math.exp(-dt / .18));
-    if (!c.shown) { c.follow = st; continue; }
-    const col = c.el.offsetLeft > grid.clientWidth * .35 ? 1 : 0, row = Math.floor(c.el.offsetTop / Math.max(1, c.el.offsetHeight));
-    const tau = .07 + col * .06 + (row % 2) * .025;
-    c.follow += (st - c.follow) * (1 - Math.exp(-dt / tau));
-    c.offset = Math.max(-180, Math.min(180, st - c.follow));
-    // Rise in as the card enters from the bottom of the screen.
-    const top = c.el.getBoundingClientRect().top;
-    const e = Math.max(0, Math.min(1, (h * 1.04 - top) / (h * .42)));
-    c.enter = 1 - Math.pow(1 - e, 3);
-    if (reduced.matches) continue;
-    const y = Math.sin(t * .85 + c.phase) * 7 + c.offset + (1 - c.enter) * 110;
-    const s = (.9 + .1 * c.enter) * (1 - Math.min(.05, Math.abs(c.offset) / 2600));
-    c.float.style.transform = `translate3d(0,${y.toFixed(2)}px,0) scale(${s.toFixed(4)})`;
-    c.float.style.opacity = (.25 + .75 * c.enter).toFixed(3);
-  }
+  // (unseen-style: cards move with the scroll as one sheet; the flow is the ripple in the shader)
 }
 
 /* ------------------------------------------------------------ WebGL --------- */
+// Cards are rendered the way unseen.co renders its project grid: flat planes in a real
+// perspective scene (camera ~1000 units in front of the card plane, 1 unit = 2 px).
+//  - flow: a constant diagonal ripple rolls through every card (crests catch light)
+//  - depth: above the bend line the cards fold back up to 1200 units into the water,
+//    with a slow wave along the fold, and fade into the fog
+//  - camera: orbits the card plane toward the mouse, rolls with mouse speed, floats
+//  - cursor: a fluid-like wake smears and brightens whatever it passes over
+//  - hover: the image zooms 1.1x inside its frame
+const UNIT = 2;            // px per scene unit at the card plane
+const CAM = 1000;          // camera distance to the card plane, in units
+const TRAIL = 14;          // cursor wake samples
 const VERT = `
 precision highp float;
 attribute vec2 aUv;
-uniform vec4 uRect; uniform vec2 uView; uniform float uVel; uniform float uCurl; uniform vec2 uTilt;
-uniform vec2 uMouse; uniform float uHover; uniform float uEnter; uniform float uShake; uniform float uTime;
-varying vec2 vUv; varying float vLift; varying float vBack;
+uniform vec4 uRect; uniform vec2 uView; uniform float uTime; uniform mat3 uCam; uniform vec2 uBend; uniform float uDepth;
+varying vec2 vUv; varying float vRipple; varying float vDist;
 void main(){
   vec2 px = uRect.xy + aUv * uRect.zw;
-  vec2 ndc = vec2(px.x / uView.x * 2.0 - 1.0, 1.0 - px.y / uView.y * 2.0);
-  float y = ndc.y, z = 0.0;
-  // Drum curl near the top and bottom of the screen. With scroll speed the drum tightens
-  // and the sheet folds right over toward the viewer, showing its paper back - strongest
-  // at the top when scrolling up, at the bottom when scrolling down.
-  float t0 = 0.32, R = 0.42 / max(uCurl, 0.001);
-  float ft = clamp(abs(uVel) * 1.4, 0.0, 1.0);
-  float fTop = ft * (uVel < 0.0 ? 1.0 : 0.45), fBot = ft * (uVel > 0.0 ? 1.0 : 0.45);
-  float back = 0.0;
-  float tt = t0 - 0.1 * fTop, Rt = R * (1.0 - 0.45 * fTop);
-  float tb = t0 - 0.1 * fBot, Rb = R * (1.0 - 0.45 * fBot);
-  if (y > tt) { float a = min((y - tt) / Rt, mix(1.55, 2.95, fTop)); y = tt + Rt * sin(a); z = Rt * (1.0 - cos(a)); back = step(1.5708, a); }
-  else if (y < -tb) { float a = min((-tb - y) / Rb, mix(1.55, 2.95, fBot)); y = -tb - Rb * sin(a); z = Rb * (1.0 - cos(a)); back = step(1.5708, a); }
-  vBack = back;
-  // scroll speed bows the sheet and drags its middle
-  z += uVel * sin(aUv.x * 3.14159) * 0.12;
-  y -= uVel * sin(aUv.x * 3.14159) * 0.025;
-  // entering cards come up tipped back, then flatten
-  z += (1.0 - uEnter) * (1.0 - aUv.y) * 0.35;
-  // camera drift: the whole sheet yaws and pitches slightly toward the cursor
-  z += uTilt.x * ndc.x * 0.07 - uTilt.y * ndc.y * 0.05;
-  // the hovered card leans toward the cursor
-  z += dot(aUv - 0.5, vec2(1.0, -1.0) * (uMouse - 0.5)) * 0.16 * uHover;
-  vLift = z;
-  float p = 1.0 / max(0.2, 1.0 - z * 0.5);
-  // pointer shake: the sheet whips sideways and shivers along its height
-  float x = ndc.x + uShake * (sin(aUv.y * 3.14159) * 0.03 + sin(ndc.y * 7.0 + uTime * 9.0) * 0.006);
-  gl_Position = vec4(x * p, y * p, clamp(-z * 0.3, -1.0, 1.0), 1.0);
+  vec3 w = vec3(px.x - uView.x * 0.5, uView.y * 0.5 - px.y, 0.0) / ${UNIT}.0;   // scene units, y up
+  float noise = sin((w.x - w.y * 0.1) * 0.03 - uTime * 1.1 + 6.7) * 50.0;
+  float ripple = sin((w.x - w.y) * 0.02 - uTime * 2.0) * 12.0;
+  float bend = smoothstep(uBend.x, uBend.y, w.y);
+  w.z += ripple - 1200.0 * bend - noise * bend + uDepth;
+  vRipple = ripple;
+  w = uCam * w;
+  float d = ${CAM}.0 - w.z;
+  vDist = d;
   vUv = aUv;
+  // perspective: the card plane (z = 0) maps 1:1 onto its DOM rectangle
+  gl_Position = vec4(w.x * ${UNIT}.0 * ${CAM}.0 / (uView.x * 0.5), w.y * ${UNIT}.0 * ${CAM}.0 / (uView.y * 0.5), 0.0, d);
 }`;
 const FRAG = `
 #ifdef GL_FRAGMENT_PRECISION_HIGH
@@ -314,33 +276,78 @@ precision highp float;
 #else
 precision mediump float;
 #endif
-uniform sampler2D uTex; uniform vec2 uImg; uniform vec4 uRect; uniform float uVel; uniform float uHover; uniform float uAlpha; uniform float uEnter;
-uniform vec2 uMouse; uniform float uTime; uniform float uShake;
-varying vec2 vUv; varying float vLift; varying float vBack;
+uniform sampler2D uTex; uniform vec2 uImg; uniform vec4 uRect; uniform float uInner; uniform float uAlpha; uniform float uLabel;
+uniform vec3 uFog; uniform vec2 uView; uniform float uDpr; uniform vec4 uTrail[${TRAIL}]; uniform float uTrailLife[${TRAIL}];
+varying vec2 vUv; varying float vRipple; varying float vDist;
 void main(){
-  float ra = uRect.z / uRect.w, ri = uImg.x / uImg.y;
-  vec2 s = ra > ri ? vec2(1.0, ri / ra) : vec2(ra / ri, 1.0);
-  vec2 q = vUv;
-  // water-like ripple rings spreading from the cursor
-  vec2 dq = (q - uMouse) * vec2(ra, 1.0);
-  float d = length(dq);
-  q += (d > 0.0001 ? dq / d : vec2(0.0)) / vec2(ra, 1.0) * sin(d * 38.0 - uTime * 5.5) * exp(-d * 6.5) * 0.0075 * uHover;
-  vec2 uv = (q - 0.5) * s / (1.0 + uHover * 0.07) + 0.5;
-  float isBack = step(0.5, vBack);
-  uv.x = mix(uv.x, 1.0 - uv.x, isBack);                 // the print shows through mirrored
-  float k = clamp(abs(uVel), 0.0, 1.0) * 0.008 + vLift * 0.004;
-  vec2 kk = vec2(uShake * 0.01, k);
-  vec3 c = vec3(texture2D(uTex, uv + kk).r, texture2D(uTex, uv).g, texture2D(uTex, uv - kk).b);
-  c = mix(c, mix(vec3(0.92, 0.96, 0.97), c, 0.2), isBack); // paper back
-  c *= 1.0 - clamp(vLift, 0.0, 1.0) * 0.18;
-  // a cool underwater cast that clears as the card arrives
-  c = mix(c, c * vec3(0.55, 0.8, 0.9) + vec3(0.0, 0.05, 0.08), (1.0 - uEnter) * 0.6);
-  gl_FragColor = vec4(c, uAlpha);
+  // cursor wake: each recent pointer sample drags the picture along its motion
+  vec2 frag = vec2(gl_FragCoord.x, uView.y * uDpr - gl_FragCoord.y) / uDpr;
+  vec2 push = vec2(0.0); float wake = 0.0;
+  for (int i = 0; i < ${TRAIL}; i++) {
+    vec4 s = uTrail[i]; float life = uTrailLife[i];
+    vec2 dv = frag - s.xy; float f = exp(-dot(dv, dv) / 5200.0) * life;
+    push += s.zw * f; wake += length(s.zw) * f;
+  }
+  vec2 q = vUv - push / uRect.zw * 0.55;
+  vec2 uv = q;
+  if (uLabel < 0.5) {
+    float ra = uRect.z / uRect.w, ri = uImg.x / uImg.y;
+    vec2 s = ra > ri ? vec2(1.0, ri / ra) : vec2(ra / ri, 1.0);
+    uv = (q - 0.5) * s / uInner + 0.5;     // cover, zoomed from the centre on hover
+  }
+  vec4 c = texture2D(uTex, uv);
+  c.rgb += smoothstep(0.0, 10.0, vRipple * 0.3) * 0.3 * (1.0 - uLabel * 0.7);
+  c.rgb += min(wake * 0.0035, 0.18);
+  c.a *= smoothstep(2000.0, 1500.0, vDist);
+  c.rgb = mix(c.rgb, uFog, smoothstep(500.0, 4500.0, vDist));
+  gl_FragColor = vec4(c.rgb, c.a * uAlpha);
 }`;
+
+function mat3Camera(yaw, pitch, roll) {
+  // world -> camera rotation (transpose of the camera's own rotation)
+  const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch), cr = Math.cos(roll), sr = Math.sin(roll);
+  const Ry = [cy, 0, -sy, 0, 1, 0, sy, 0, cy], Rx = [1, 0, 0, 0, cp, sp, 0, -sp, cp], Rz = [cr, sr, 0, -sr, cr, 0, 0, 0, 1];
+  const mul = (a, b) => { const o = []; for (let c = 0; c < 3; c++) for (let r = 0; r < 3; r++) o[c * 3 + r] = a[r] * b[c * 3] + a[3 + r] * b[c * 3 + 1] + a[6 + r] * b[c * 3 + 2]; return o; };
+  const R = mul(mul(Rx, Ry), Rz);
+  return new Float32Array([R[0], R[3], R[6], R[1], R[4], R[7], R[2], R[5], R[8]]);
+}
+
+function texFrom(source) {
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  return tex;
+}
+
+// Card titles are drawn into the scene too (as on unseen), so they fold back with their card.
+function drawLabel(card) {
+  if (!gl) return;
+  const r = card.meta.getBoundingClientRect(); if (r.width < 2) return;
+  const dpr = Math.min(devicePixelRatio || 1, 2), w = Math.ceil(r.width), h = Math.ceil(r.height);
+  const cv = card.labelCanvas || (card.labelCanvas = document.createElement('canvas'));
+  cv.width = w * dpr; cv.height = h * dpr;
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+  const name = $('.eb-name', card.el), tags = $('.eb-tags', card.el), arrow = $('.eb-arrow', card.el);
+  const box = el => el.getBoundingClientRect(), font = el => { const s = getComputedStyle(el); return `${s.fontWeight} ${s.fontSize} ${s.fontFamily}`; };
+  ctx.textBaseline = 'top'; ctx.fillStyle = '#e9f5f6';
+  for (const [el, alpha] of [[name, 1], [tags, .88], [arrow, 1]]) {
+    const b = box(el); ctx.globalAlpha = alpha; ctx.font = font(el);
+    ctx.fillText(el.textContent, b.left - r.left, b.top - r.top + (b.height - parseFloat(getComputedStyle(el).fontSize)) / 2);
+  }
+  ctx.globalAlpha = .25; ctx.fillRect(0, h - 1, w, 1); ctx.globalAlpha = 1;
+  if (card.labelTex) gl.deleteTexture(card.labelTex);
+  card.labelTex = texFrom(cv); card.labelSize = [w, h];
+}
+function drawLabels() { if (gl) cards.forEach(drawLabel); }
 
 function initGL() {
   if (reduced.matches) return;
-  gl = canvas.getContext('webgl', { premultipliedAlpha: false, antialias: true, alpha: true, depth: true });
+  gl = canvas.getContext('webgl', { premultipliedAlpha: false, antialias: true, alpha: true });
   if (!gl) return;
   const compile = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
   try {
@@ -350,7 +357,7 @@ function initGL() {
     gl.linkProgram(program);
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
   } catch (error) { console.warn('[eboats] WebGL unavailable', error); gl = null; return; }
-  const N = 32, uvs = [], idx = [];
+  const N = 24, uvs = [], idx = [];
   for (let y = 0; y <= N; y++) for (let x = 0; x <= N; x++) uvs.push(x / N, y / N);
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const a = y * (N + 1) + x, b = a + 1, c = a + N + 1, d = c + 1; idx.push(a, c, b, b, c, d); }
   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uvs), gl.STATIC_DRAW);
@@ -359,31 +366,47 @@ function initGL() {
   gl.useProgram(program);
   const loc = gl.getAttribLocation(program, 'aUv');
   gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-  program.u = Object.fromEntries(['uRect', 'uView', 'uVel', 'uCurl', 'uTilt', 'uMouse', 'uHover', 'uTex', 'uImg', 'uAlpha', 'uTime', 'uEnter', 'uShake'].map(n => [n, gl.getUniformLocation(program, n)]));
-  gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL);
-  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  program.u = Object.fromEntries(['uRect', 'uView', 'uTime', 'uCam', 'uBend', 'uDepth', 'uTex', 'uImg', 'uInner', 'uAlpha', 'uLabel', 'uFog', 'uDpr', 'uTrail', 'uTrailLife'].map(n => [n, gl.getUniformLocation(program, n)]));
+  gl.disable(gl.DEPTH_TEST);
+  gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
   cards.forEach(card => {
-    const load = () => {
-      const tex = gl.createTexture();
-      gl.bindTexture(gl.TEXTURE_2D, tex);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, card.img);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      card.tex = tex; card.size = [card.img.naturalWidth, card.img.naturalHeight];
-      card.el.classList.add('is-gl');
-    };
+    const load = () => { card.tex = texFrom(card.img); card.size = [card.img.naturalWidth, card.img.naturalHeight]; card.el.classList.add('is-gl'); };
     if (card.img.complete && card.img.naturalWidth) load(); else card.img.addEventListener('load', load, { once: true });
   });
+  (document.fonts?.ready || Promise.resolve()).then(() => requestAnimationFrame(drawLabels));
   root.classList.add('has-gl');
 }
+
+// Tiny tween helper (power2.out like unseen's GSAP defaults).
+const power2Out = t => 1 - (1 - t) * (1 - t);
+function tween(card, key, to, duration, delay = 0) {
+  card.tweens = (card.tweens || []).filter(t => t.key !== key);
+  card.tweens.push({ key, from: card[key], to, start: performance.now() + delay * 1000, duration: duration * 1000 });
+}
+function runTweens(card, now) {
+  if (!card.tweens?.length) return;
+  card.tweens = card.tweens.filter(t => {
+    if (now < t.start) return true;
+    const k = Math.min(1, (now - t.start) / t.duration);
+    card[t.key] = t.from + (t.to - t.from) * power2Out(k);
+    return k < 1;
+  });
+}
+
+const trail = Array.from({ length: TRAIL }, () => ({ x: -1e4, y: -1e4, vx: 0, vy: 0, life: 0 }));
+let trailHead = 0, lastTrail = null;
+const camState = { mx: 0, my: 0, mx2: 0, my2: 0 };
 
 function frame(now) {
   raf = 0;
   if (!open) return;
   updateMotion(now);
+  const dt = Math.min(.05, Math.max(.001, (now - (frame.last || now - 16.7)) / 1000)); frame.last = now;
+  const f60 = dt * 60;
   if (wheelActive) {
-    scrollCurrent += (scrollTarget - scrollCurrent) * (drag?.moved ? .16 : .085);
+    // unseen: smoothScrollPos += 0.05 * (scrollPos - smoothScrollPos) per frame (faster while dragging)
+    const k = 1 - Math.pow(1 - (drag?.moved ? .16 : .05), f60);
+    scrollCurrent += (scrollTarget - scrollCurrent) * k;
     if (!drag && Math.abs(scrollTarget - scrollCurrent) < .4) { scrollCurrent = scrollTarget; wheelActive = false; }
     scroller.scrollTop = scrollCurrent;
   }
@@ -391,33 +414,66 @@ function frame(now) {
   velocity += ((st - lastScroll) / 38 - velocity) * .14;
   lastScroll = st;
   drawSea(now, st);
-  updateFlakes(now, st);
   if (gl) {
     const dpr = Math.min(devicePixelRatio || 1, 2), w = innerWidth, h = innerHeight;
     if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
     gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+    // camera: eased mouse (0.075 / 0.02 per frame), yaw 0.05 rad, pitch 0.035 rad, roll from the
+    // difference of the two, plus a slow float
+    const nx = pointer.seen ? (pointer.tx / w) * 2 - 1 : 0, ny = pointer.seen ? 1 - (pointer.ty / h) * 2 : 0;
+    const k1 = 1 - Math.pow(1 - .075, f60), k2 = 1 - Math.pow(1 - .02, f60);
+    camState.mx += (nx - camState.mx) * k1; camState.my += (ny - camState.my) * k1;
+    camState.mx2 += (nx - camState.mx2) * k2; camState.my2 += (ny - camState.my2) * k2;
+    const t = (now - startedAt) / 1000, still = !finePointer.matches || reduced.matches;
+    const floatY = still ? 0 : Math.sin(t * .59 * 2.1) * .0045 + Math.sin(t * .37 + 1.3) * .003;
+    const floatX = still ? 0 : Math.sin(t * .59 * 1.7 + 2) * .004;
+    const yaw = (still ? 0 : -camState.mx * .05) + floatY, pitch = (still ? 0 : camState.my * .035) + floatX;
+    const roll = still ? 0 : -.05 * (camState.mx - camState.mx2);
+    gl.uniformMatrix3fv(program.u.uCam, false, mat3Camera(yaw, pitch, roll));
+    // cursor wake samples (fluid-like): newest first, they fade over ~0.6 s
+    if (pointer.seen && !still) {
+      const p = { x: pointer.tx, y: pointer.ty };
+      if (lastTrail) {
+        const vx = (p.x - lastTrail.x) / f60, vy = (p.y - lastTrail.y) / f60;
+        if (Math.hypot(vx, vy) > .5) { trailHead = (trailHead + 1) % TRAIL; Object.assign(trail[trailHead], { x: p.x, y: p.y, vx, vy, life: 1 }); }
+      }
+      lastTrail = p;
+    }
+    const tr = new Float32Array(TRAIL * 4), tl = new Float32Array(TRAIL);
+    trail.forEach((s, i) => { s.life = Math.max(0, s.life - dt / .6); tr.set([s.x, s.y, s.vx, s.vy], i * 4); tl[i] = s.life * s.life; });
+    gl.uniform4fv(program.u.uTrail, tr); gl.uniform1fv(program.u.uTrailLife, tl);
     gl.uniform2f(program.u.uView, w, h);
-    gl.uniform1f(program.u.uCurl, w < 760 ? .7 : 1);
-    gl.uniform2f(program.u.uTilt, view.x, view.y);
-    gl.uniform1f(program.u.uTime, (now - startedAt) / 1000);
-    gl.uniform1f(program.u.uShake, shake.s);
+    gl.uniform1f(program.u.uDpr, dpr);
+    gl.uniform1f(program.u.uTime, t);
+    const s = h / 1100;
+    gl.uniform2f(program.u.uBend, 100 * (w < 760 ? 1 : s), (w < 760 ? 500 : 700 * s));
+    gl.uniform3f(program.u.uFog, .05, .27, .36);
     const stageTop = stage.getBoundingClientRect().top;
     for (const c of cards) {
-      if (!c.tex || !c.shown) continue;
+      runTweens(c, now);
+      c.hover += (c.hoverTarget - c.hover) * (1 - Math.exp(-dt / .09));
+      if (!c.tex || (!c.shown && c.fAlpha <= .001)) continue;
       const r = c.media.getBoundingClientRect();
-      if (r.bottom < -h * .3 || r.top > h * 1.3 || r.width < 2) continue;
-      const alpha = (Number(getComputedStyle(c.el).opacity) || 0) * (Number(c.float.style.opacity) || 1) * (stageTop > h * .98 ? 0 : 1);
+      if (r.bottom < -h * .6 || r.top > h * 1.3 || r.width < 2) continue;
+      const alpha = (Number(getComputedStyle(c.el).opacity) || 0) * c.fAlpha * (stageTop > h * .98 ? 0 : 1);
       if (alpha <= .01) continue;
+      gl.uniform1f(program.u.uDepth, c.depth);
+      gl.uniform1f(program.u.uAlpha, alpha);
+      gl.uniform1f(program.u.uLabel, 0);
       gl.bindTexture(gl.TEXTURE_2D, c.tex);
       gl.uniform4f(program.u.uRect, r.left, r.top, r.width, r.height);
       gl.uniform2f(program.u.uImg, c.size[0], c.size[1]);
-      gl.uniform1f(program.u.uHover, c.hover);
-      gl.uniform1f(program.u.uVel, Math.max(-1, Math.min(1, velocity * .5 + c.offset / 260)));
-      gl.uniform1f(program.u.uEnter, reduced.matches ? 1 : c.enter);
-      gl.uniform2f(program.u.uMouse, c.mouse[0], c.mouse[1]);
-      gl.uniform1f(program.u.uAlpha, alpha);
+      gl.uniform1f(program.u.uInner, 1 + .1 * c.hover);
       gl.drawElements(gl.TRIANGLES, program.count, gl.UNSIGNED_SHORT, 0);
+      if (c.labelTex) {
+        const m = c.meta.getBoundingClientRect();
+        gl.bindTexture(gl.TEXTURE_2D, c.labelTex);
+        gl.uniform1f(program.u.uLabel, 1);
+        gl.uniform4f(program.u.uRect, m.left, m.top, c.labelSize[0], c.labelSize[1]);
+        gl.uniform1f(program.u.uInner, 1);
+        gl.drawElements(gl.TRIANGLES, program.count, gl.UNSIGNED_SHORT, 0);
+      }
     }
   }
   raf = requestAnimationFrame(frame);
@@ -442,7 +498,7 @@ function updateFlakes(now, st) {
   const dt = Math.min(.033, Math.max(.001, (now - (updateFlakes.last || now - 16.7)) / 1000)); updateFlakes.last = now;
   const delta = st - (updateFlakes.st ?? st); updateFlakes.st = st;
   // Emit from the fold lines of visible cards, more the faster the list is moving.
-  const speed = Math.min(1.5, Math.abs(velocity) + Math.abs(shake.s) * .4);
+  const speed = 0;
   if (speed > .08) {
     const lines = [h * .34, h * .66];
     for (const c of cards) {
@@ -661,7 +717,8 @@ async function openHighlights() {
   root.hidden = false;
   root.classList.add('is-entering');
   scroller.scrollTop = 0; lastScroll = 0; velocity = 0; scrollTarget = scrollCurrent = 0; wheelActive = false;
-  cards.forEach(c => { c.follow = 0; c.offset = 0; });
+  cards.forEach(c => { c.depth = 0; c.fAlpha = 1; c.tweens = []; });
+  requestAnimationFrame(drawLabels);
   flakes = []; shake.raw = shake.s = shake.v = 0; shake.lastX = null;
   pointer.x = pointer.tx; pointer.y = pointer.ty;
   if (!raf) raf = requestAnimationFrame(frame);
@@ -714,17 +771,22 @@ async function close(then) {
   if (then) then(); else $('.landing-primary')?.focus({ preventScroll: true });
 }
 
+let filtering = 0;
 function filter(group) {
   root.querySelectorAll('.eb-pill').forEach(p => p.setAttribute('aria-pressed', String(p.dataset.group === group)));
-  cards.forEach((c, i) => {
-    const show = group === 'All' || ITEMS[i].group === group;
-    if (show === c.shown) return;
-    c.shown = show;
-    c.el.hidden = !show;
-    if (show) anim(c.el, [{ opacity: 0, transform: 'translateY(60px)' }, { opacity: 1, transform: 'none' }], { duration: 900, easing: 'cubic-bezier(.16,1,.3,1)' }).then(() => settle([c.el]));
-  });
-  if (reduced.matches) scroller.scrollTop = 0;
-  else { if (!wheelActive) scrollCurrent = scroller.scrollTop; scrollTarget = 0; wheelActive = true; }
+  const run = ++filtering;
+  const apply = () => {
+    if (run !== filtering) return;
+    cards.forEach((c, i) => { c.shown = group === 'All' || ITEMS[i].group === group; c.el.hidden = !c.shown; });
+    wheelActive = false; scroller.scrollTop = scrollTarget = scrollCurrent = 0;
+    requestAnimationFrame(drawLabels);
+    let n = 0;
+    cards.forEach(c => { if (!c.shown) return; c.depth = 100; c.fAlpha = 0; tween(c, 'depth', 0, .5, .035 * n); tween(c, 'fAlpha', 1, .5, .035 * n); n++; });
+  };
+  if (!gl || reduced.matches) { apply(); cards.forEach(c => { c.depth = 0; c.fAlpha = 1; c.tweens = []; }); return; }
+  let n = 0;
+  cards.forEach(c => { if (!c.shown) return; tween(c, 'depth', -100, .5, .035 * n); tween(c, 'fAlpha', 0, .3, .035 * n); n++; });
+  setTimeout(apply, (500 + 35 * Math.max(0, n - 1)));
 }
 
 async function choose(item) {
@@ -739,4 +801,4 @@ async function choose(item) {
 document.addEventListener('esmi:landing-action', event => {
   if (event.detail?.action === 'eboats') openHighlights();
 });
-addEventListener('resize', () => { if (open && !raf) raf = requestAnimationFrame(frame); });
+addEventListener('resize', () => { if (open && !raf) raf = requestAnimationFrame(frame); clearTimeout(drawLabels.t); drawLabels.t = setTimeout(drawLabels, 150); });

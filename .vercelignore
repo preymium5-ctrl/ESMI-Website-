@@ -1,0 +1,5 @@
+# Local-only files: the dev server, build scripts and tests are not part of the live site.
+server.mjs
+start-esmi.cmd
+scripts/
+tests/

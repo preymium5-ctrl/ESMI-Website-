@@ -144,7 +144,9 @@ function setExplode(value, animate = false) {
 slider.addEventListener('input', () => { explodeTarget = explodeNow = Number(slider.value); });
 function applyExplode() {
   if (!mixer) return;
-  mixer.setTime(tAssembled - explodeNow * (tAssembled - tExploded));
+  // Stop just short of the clip's end: reaching it finishes the LoopOnce action, which then
+  // pauses and ignores every later setTime, freezing the boat on frame 1 (fully apart).
+  mixer.setTime(Math.min(tAssembled - 1e-4, tAssembled - explodeNow * (tAssembled - tExploded)));
 }
 
 /* ------------------------------------------------------------ load ---------- */

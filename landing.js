@@ -1,4 +1,5 @@
 import {setupLandingEffects} from './landing-effects.js';
+import {hoverTick} from './ui-sound.js';
 
 const landing = document.querySelector('#landing');
 const video = document.querySelector('#landing-video');
@@ -250,43 +251,6 @@ addEventListener('scroll',updateScrollLock,{passive:true});
 if (!location.hash) scrollTo({top:0,behavior:'instant'});
 updateScrollLock();
 
-// Hover tick on "Explore the E-Boat", modelled on unseen.co's button hover sound: a soft
-// ~1.4 kHz tone with a quick pitch dip, held for ~4 ms, mostly gone by 9 ms, with a faint
-// tail to ~35 ms. Synthesised here rather than reusing their recording. It plays whether or
-// not the background sound is on. Browsers only allow audio after the visitor's first click,
-// tap or key press on the page, so that first interaction starts it; touch has no hover.
-let uiAudio = null;
-function startUiAudio() {
-  const Context = window.AudioContext || window.webkitAudioContext;
-  if (!Context) return null;
-  uiAudio ??= new Context();
-  if (uiAudio.state === 'suspended') uiAudio.resume();
-  return uiAudio;
-}
-for (const type of ['pointerdown','keydown']) addEventListener(type,startUiAudio,{capture:true,passive:true});
-
-function playHoverTick() {
-  const audio = uiAudio;
-  if (!audio || audio.state !== 'running') return;
-  const t = audio.currentTime + .005;
-  const tone = audio.createOscillator();
-  tone.type = 'sine';
-  tone.frequency.setValueAtTime(1340,t);
-  tone.frequency.linearRampToValueAtTime(1470,t + .002);
-  tone.frequency.exponentialRampToValueAtTime(1130,t + .007);
-  tone.frequency.exponentialRampToValueAtTime(1460,t + .010);
-  tone.frequency.exponentialRampToValueAtTime(1340,t + .016);
-  const level = audio.createGain();
-  level.gain.setValueAtTime(.0001,t);
-  level.gain.exponentialRampToValueAtTime(.16,t + .0015);
-  level.gain.linearRampToValueAtTime(.14,t + .004);
-  level.gain.exponentialRampToValueAtTime(.008,t + .0085);
-  level.gain.exponentialRampToValueAtTime(.005,t + .026);
-  level.gain.exponentialRampToValueAtTime(.0001,t + .034);
-  tone.connect(level).connect(audio.destination);
-  tone.start(t);
-  tone.stop(t + .04);
-}
 document.querySelector('.landing-primary').addEventListener('pointerenter',event=>{
-  if (event.pointerType === 'mouse') playHoverTick();
+  if (event.pointerType === 'mouse') hoverTick();
 });

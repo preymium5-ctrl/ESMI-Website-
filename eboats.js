@@ -9,6 +9,8 @@
 // (trailing ring, magnetic controls, eased camera drift) uses the same constants as
 // landing-effects.js so both pages feel the same. Pill buttons get a rolling label.
 
+import { underwaterPlunge } from './ui-sound.js';
+
 const ITEMS = [
   { title: 'The Twin Hulls', tags: 'Silver topsides, charcoal keels', group: 'Engineering', img: './assets/eboats/hulls.webp', go: { chapter: 'Hull' } },
   { title: 'Electric Drive', tags: 'Pod motor and propeller', group: 'Engineering', img: './assets/eboats/drive.webp', go: { chapter: 'Drive' } },
@@ -722,6 +724,7 @@ async function openHighlights() {
   flakes = []; shake.raw = shake.s = shake.v = 0; shake.lastX = null;
   pointer.x = pointer.tx; pointer.y = pointer.ty;
   if (!raf) raf = requestAnimationFrame(frame);
+  underwaterPlunge();
   // The camera drops: the landing scene rises out of frame as the studio comes up from below.
   const fromMedia = media ? getComputedStyle(media).transform : 'none';
   const drop = [

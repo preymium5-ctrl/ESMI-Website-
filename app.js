@@ -206,8 +206,44 @@ function sourceColor(source) {
     return color;
   } catch { return sceneColor; }
 }
+// Engineering page: the render fills the whole screen. The frame is scaled up
+// (never cropping the boat sideways) and any space left at the edges is filled by
+// stretching the frame's own outermost studio pixels, so there is no visible box.
+function drawFullBleed(source) {
+  const sw = source.naturalWidth || source.videoWidth || manifest?.width || 1920;
+  const sh = source.naturalHeight || source.videoHeight || manifest?.height || 1080;
+  const portrait = width < 760;
+  // Desktop: fit the frame to the screen height. Phones: fit the boat (≈ 60% of
+  // the frame width) to the screen width and lift it into the upper part of the screen.
+  const scale = portrait ? width / (sw * .6) : Math.min(height / sh, width / (sw * .66));
+  const w = sw * scale, h = sh * scale;
+  // The boat sits a little left of the frame centre (x ≈ 882 of 1920): centre the boat, not the frame.
+  const x = (width - w) / 2 + sw * .04 * scale;
+  const y = (portrait ? height * .36 : height / 2) - h / 2;
+  // Top/bottom fill comes from the finished-boat frame, whose top and bottom rows are clean
+  // studio (exploded parts can touch the top edge of other frames).
+  const fill = handoff?.naturalWidth ? handoff : source;
+  const fw = fill.naturalWidth || sw, fh = fill.naturalHeight || sh;
+  context.setTransform(dpr,0,0,dpr,0,0);
+  context.imageSmoothingEnabled = true;
+  sceneColor = sourceColor(fill);
+  context.fillStyle = sceneColor;
+  context.fillRect(0,0,width,height);
+  if (x > 0) {
+    // Sides: every frame's outer columns are bare studio, so extend the frame itself (no seam).
+    context.drawImage(source, 2, 0, 2, sh, 0, y, x + 1, h);
+    context.drawImage(source, sw - 4, 0, 2, sh, x + w - 1, y, width - x - w + 1, h);
+  }
+  if (y > 0) {
+    context.drawImage(fill, 0, 2, fw, 2, x, 0, w, y + 1);
+    context.drawImage(source, 0, sh - 4, sw, 2, x, y + h - 1, w, height - y - h + 1);   // bottom rows are always bare floor
+  }
+  context.drawImage(source, x, y, w, h);
+  stage.dataset.mediaRect = [x,y,w,h].map(n=>n.toFixed(2)).join(',');
+}
 function drawSource(source) {
   if (!source) return;
+  if (PAGE === 'engineering' && mode !== 'film') { drawFullBleed(source); return; }
   const studioProgress = manifest?.internalLayout && mode !== 'film' ? Number(stage.dataset.assembly || 0) : 1;
   const sourceW = (mode === 'film' ? source.videoWidth : 0) || manifest?.width || source.videoWidth || source.naturalWidth || 16;
   const sourceH = (mode === 'film' ? source.videoHeight : 0) || manifest?.height || source.videoHeight || source.naturalHeight || 9;

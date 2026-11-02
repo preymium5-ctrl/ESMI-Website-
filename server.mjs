@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 const root=path.resolve('.');
 const port=Number(process.env.PORT||5174);
-const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.jpeg':'image/jpeg','.jpg':'image/jpeg','.webp':'image/webp','.png':'image/png','.svg':'image/svg+xml','.woff2':'font/woff2','.txt':'text/plain; charset=utf-8','.gltf':'model/gltf+json','.glb':'model/gltf-binary','.bin':'application/octet-stream','.hdr':'application/octet-stream','.wav':'audio/wav','.ogg':'audio/ogg','.flac':'audio/flac','.mp3':'audio/mpeg','.mp4':'video/mp4','.webm':'video/webm'};
+const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.jpeg':'image/jpeg','.jpg':'image/jpeg','.webp':'image/webp','.png':'image/png','.svg':'image/svg+xml','.woff2':'font/woff2','.txt':'text/plain; charset=utf-8','.xml':'application/xml; charset=utf-8','.ico':'image/x-icon','.webmanifest':'application/manifest+json','.gltf':'model/gltf+json','.glb':'model/gltf-binary','.bin':'application/octet-stream','.hdr':'application/octet-stream','.wav':'audio/wav','.ogg':'audio/ogg','.flac':'audio/flac','.mp3':'audio/mpeg','.mp4':'video/mp4','.webm':'video/webm'};
 const server=http.createServer((req,res)=>{
   if(req.method!=='GET'&&req.method!=='HEAD'){
     res.writeHead(405,{'Allow':'GET, HEAD'});res.end();return;

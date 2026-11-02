@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en" class="esmi-page" data-page="engineering">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#155b77">
+  <meta name="description" content="The ESMI E-Boat engineering: scroll to assemble the solar electric catamaran, from twin hulls and drive to batteries, wiring, seating, helm and solar canopy.">
+  <title>ESMI — Engineering</title>
+  <link rel="preload" href="./assets/manrope.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./assets/fonts/NeueMontreal-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./assets/fonts/SaolDisplay-LightItalic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./assets/fonts/SaolDisplay-Light.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#experience">Start the engineering</a>
+  <main id="experience" aria-label="The ESMI E-Boat engineering: scroll-controlled assembly">
+    <section id="stage" aria-labelledby="experience-title">
+      <div id="media-stage" class="media-stage">
+        <canvas id="assembly-canvas" aria-label="The ESMI solar catamaran, from separated components to the completed boat" role="img"></canvas>
+        <video id="cinematic-video" muted playsinline preload="none" poster="./assets/film-v3/poster.jpg" aria-hidden="true"><source src="./assets/film-v3/esmi-film.mp4" type="video/mp4"></video>
+      </div>
+      <div class="scene-shade" aria-hidden="true"></div>
+      <header class="site-header">
+        <a class="brand" href="./" aria-label="ESMI home"><img src="./assets/film-v3/esmi-mark.svg" alt="" width="42" height="26"><span>ESMI<small>SOLAR. ELECTRIC. MARINE.</small></span></a>
+        <span class="header-caption">A DIFFERENT WAY TO MOVE</span>
+        <button id="watch-film" class="film-link"><span>Watch the film</span><svg viewBox="0 0 18 18" aria-hidden="true"><path d="m7 4 7 5-7 5Z"/></svg></button>
+      </header>
+
+      <div class="chapter-rail" aria-hidden="true"><span id="phase-label">01 / THE BEGINNING</span><span class="rail-line"></span><span>ESMI E-BOAT</span></div>
+
+      <div class="intro-copy" id="intro-copy">
+        <p class="eyebrow">THE ESMI SOLAR ELECTRIC EXPERIENCE</p>
+        <h1 id="experience-title">From the <span class="hero-word">sun.</span><br><em>To the sea.</em></h1>
+        <p class="intro-description">A closer look at everything<br>that brings us together.</p>
+        <button class="inline-action" id="intro-begin" data-begin>Follow the story <span aria-hidden="true">↘</span></button>
+      </div>
+
+      <aside id="chapter-copy" class="chapter-copy" aria-live="polite" aria-atomic="true">
+        <p class="eyebrow" id="chapter-eyebrow">01 / THE FOUNDATION</p>
+        <h2 id="chapter-title">A beginning<br><em>with balance.</em></h2>
+        <p id="chapter-description">Two hulls. One open platform. The familiar ESMI silhouette begins to take shape.</p>
+        <span class="material-line"></span>
+        <p id="chapter-material">DUAL-HULL CATAMARAN</p>
+        <p id="internal-layout-note" class="internal-layout-note" hidden>Illustrative internal layout</p>
+      </aside>
+
+      <div class="film-copy" id="film-copy" aria-live="polite">
+        <p class="eyebrow" id="film-eyebrow">THE JOURNEY BEGINS</p>
+        <h2 id="film-title">One complete idea.<br><em>Endless possibilities.</em></h2>
+        <p id="film-description">Let the view take over.</p>
+      </div>
+
+      <div class="technical-orbit" aria-hidden="true"><i></i><span>ESMI / SOLAR ELECTRIC</span></div>
+
+      <div id="loading-status" class="loading-status" role="status"><span class="loading-dot"></span><span>Preparing your perspective</span></div>
+      <p id="film-status" class="film-status" role="status"></p>
+
+      <div class="scene-bottom">
+        <div class="story-progress"><div class="progress-topline"><span>THE ESMI STORY</span><output id="progress-label">00%</output></div><div class="progress-line"><span id="progress-fill"></span></div><nav id="stage-navigation" aria-label="Assembly chapters"><button data-chapter="0" aria-label="Twin hulls" aria-current="step"><span>01</span><span>Hull</span></button><button data-chapter="1" aria-label="Deck"><span>02</span><span>Deck</span></button><button data-chapter="2" aria-label="Aluminum frame"><span>03</span><span>Frame</span></button><button data-chapter="3" aria-label="Passenger seating"><span>04</span><span>Seating</span></button><button data-chapter="4" aria-label="Steering console"><span>05</span><span>Helm</span></button><button data-chapter="5" aria-label="Solar canopy"><span>06</span><span>Solar</span></button></nav></div>
+        <div class="scene-actions"><button id="restart" class="quiet-button" aria-label="Return to the beginning">Back to the beginning <span aria-hidden="true">↻</span></button><button id="begin" class="pill-button"><span>Scroll to assemble</span><span class="pill-arrow" aria-hidden="true">↓</span></button></div>
+      </div>
+
+      <div id="film-controls" class="film-controls" hidden>
+        <div class="film-control-buttons"><button id="play-pause" class="pill-button" aria-label="Pause the film"><span>Pause film</span><span class="pause-symbol" aria-hidden="true">Ⅱ</span></button><button id="replay" class="round-button" aria-label="Replay the film">↻</button><button id="sound-toggle" class="quiet-button" hidden>Sound off</button></div>
+        <div class="film-timeline"><label class="sr-only" for="film-seek">Film position</label><input id="film-seek" type="range" min="0" max="50" step="0.05" value="0"><div class="film-timeline-labels"><output id="film-time">00:00</output><span id="film-end-time">00:50</span></div></div>
+        <button id="return-assembly" class="quiet-button" data-restart>Back to the beginning <span aria-hidden="true">↖</span></button>
+      </div>
+      <span class="corner-caption">EBOAT SYSTEM<br>MERCHANDISING INC.</span>
+    </section>
+  </main>
+  <footer class="site-footer"><span>ESMI</span><p>From the sun. To the sea.</p><span class="footer-note">A visual story of the ESMI E-Boat.</span></footer>
+  <noscript><p class="noscript-message">Enable JavaScript to experience the scroll-controlled assembly. <a href="./">Back to ESMI</a>.</p></noscript>
+  <script id="experience-config" type="application/json">{"manifest":"./assets/v3/assembly.json"}</script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

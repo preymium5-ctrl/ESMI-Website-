@@ -80,3 +80,7 @@
   .chapter-copy{bottom:180px}
 }
 
+
+/* Separate pages: index.html is the landing + film (the stage is one screen, no
+   assembly scroll); engineering.html holds the scroll assembly. */
+html[data-page="film"] #experience{height:100svh}

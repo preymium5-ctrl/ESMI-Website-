@@ -1,6 +1,16 @@
 import { STORY, clamp, storyAt, chapterCenter, mediaRect } from './timeline.js';
 
 const $ = selector => document.querySelector(selector);
+// Which page this is: 'film' (landing + film, index.html), 'engineering' (the
+// scroll assembly, engineering.html), or 'all' (both in one scroll, the old layout).
+const PAGE = document.documentElement.dataset.page || 'all';
+const ENGINEERING_URL = './engineering.html';
+const FILM_URL = './#film';
+function leaveTo(url) {
+  // A short fade so the page change reads as a transition, not a cut.
+  if (reduced.matches || !document.body.animate) { location.href = url; return; }
+  document.body.animate([{opacity:1},{opacity:0}],{duration:320,easing:'ease-in',fill:'forwards'}).finished.then(()=>{location.href = url;});
+}
 const track = $('#experience');
 const stage = $('#stage');
 const canvas = $('#assembly-canvas');
@@ -73,7 +83,7 @@ function configureExperience(data) {
   $('#film-seek').max = String(filmConfig.duration);
   $('#film-end-time').textContent = timeLabel(filmConfig.duration);
   $('#sound-toggle').hidden = !filmConfig.hasAudio;
-  if (configuredFilm.src) {
+  if (configuredFilm.src && PAGE !== 'engineering') {
     film.querySelector('source').src = configuredFilm.src;
     film.poster = configuredFilm.poster || data.poster || filmConfig.poster;
     film.load();
@@ -321,11 +331,34 @@ function stopMovie() {
   status.textContent = '';
 }
 
+function updateFilmPage() {
+  // Film page: the stage is a single screen. The film plays while the stage
+  // fills the view and pauses when the visitor scrolls back up to the landing.
+  if (!handoff) return;
+  const box = track.getBoundingClientRect();
+  const visible = box.top < innerHeight * .4 && box.bottom > innerHeight * .6;
+  if (visible && !filmWasRequested) {
+    filmWasRequested = true;
+    clearTimeout(startTimer);
+    if (reduced.matches && !explicitPlay) { status.textContent = 'Select Play film to begin.'; return; }
+    if (film.currentTime > 0 && !film.ended) film.play().then(beginMovieRender).catch(()=>{});
+    else startTimer = setTimeout(()=>startMovie(), 200);
+  } else if (!visible && filmWasRequested) {
+    clearTimeout(startTimer);
+    filmWasRequested = false;
+    film.pause();
+    cancelMovieRender();
+  }
+}
+
 function updateScroll() {
+  if (PAGE === 'film') { updateFilmPage(); return; }
   const range = Math.max(1, track.offsetHeight-innerHeight);
   scrollProgress = clamp((scrollY-track.offsetTop)/range);
   const state = storyAt(scrollProgress,manifest?.frames.length || 1,chapters);
-  if (state.assembly >= .75 && !filmBufferingRequested) {
+  // The engineering page ends on the assembled boat; the film lives on its own page.
+  if (PAGE === 'engineering' && state.phase === 'film') state.phase = 'assembly';
+  if (PAGE !== 'engineering' && state.assembly >= .75 && !filmBufferingRequested) {
     // Let the browser buffer the film before the handoff. Do not copy the
     // movie into JavaScript memory or reload its already-open media source.
     film.preload = 'auto';
@@ -341,11 +374,21 @@ function updateScroll() {
   if (completeCopy && state.assembly < .999) selectedChapter = -1;
   chapterAt(state.chapter);
   completeCopy = state.assembly >= .999;
+  if (PAGE === 'engineering') {
+    // At the end of the assembly the main button leads on to the film page.
+    const label = completeCopy ? 'Watch the film' : 'Scroll to assemble';
+    if ($('#begin span').textContent !== label) {
+      $('#begin span').textContent = label;
+      $('#begin .pill-arrow').textContent = completeCopy ? '↗' : '↓';
+    }
+  }
   if (state.phase === 'intro') $('#phase-label').textContent = '01 / THE BEGINNING';
   if (state.assembly >= .999) {
     $('#phase-label').textContent = 'ASSEMBLY COMPLETE / READY FOR THE WATER';
     $('#chapter-title').innerHTML = 'One complete idea. <br> <em>Ready for the water.</em>';
-    $('#chapter-description').textContent = 'The engineering comes together. Keep scrolling and let the scene come to life.';
+    $('#chapter-description').textContent = PAGE === 'engineering'
+      ? 'The engineering comes together. Watch it take to the water in the ESMI film.'
+      : 'The engineering comes together. Keep scrolling and let the scene come to life.';
     $('#chapter-material').textContent = 'ESMI / SOLAR ELECTRIC CATAMARAN';
     $('#internal-layout-note').hidden = true;
   }
@@ -384,13 +427,13 @@ function renderMovie() {
   else movieRaf = requestAnimationFrame(renderMovie);
 }
 async function startMovie() {
-  if (scrollProgress < STORY.film-.018 || !handoff) return;
+  if ((PAGE !== 'film' && scrollProgress < STORY.film-.018) || !handoff) return;
   currentFrame = handoff;
   drawSource(handoff);
   ++renderToken;
   status.textContent = '';
   film.currentTime = 0;
-  filmBlendStart = manifest?.source === 'Blender' ? performance.now() : 0;
+  filmBlendStart = PAGE !== 'film' && manifest?.source === 'Blender' ? performance.now() : 0;
   setMode('film');
   lastFilmChapter = lastFilmSecond = -1;
   document.body.classList.remove('film-ended');
@@ -438,17 +481,33 @@ function updateMovieUI() {
   stage.dataset.filmTime = time.toFixed(3);
   document.body.classList.toggle('film-ended', film.ended);
 }
-function begin() { gotoProgress(Math.min(STORY.assembled, Math.max(scrollProgress+.13,STORY.begin+.035))); }
+function begin() { if (PAGE === 'engineering' && completeCopy) { watchFilm(); return; } gotoProgress(Math.min(STORY.assembled, Math.max(scrollProgress+.13,STORY.begin+.035))); }
 $('#begin').addEventListener('click',begin);
 document.querySelectorAll('[data-begin]').forEach(button=>button.addEventListener('click',begin));
 chapterButtons.forEach(button=>button.addEventListener('click',()=>gotoProgress(STORY.begin+(STORY.assembled-STORY.begin)*chapterCenter(Number(button.dataset.chapter),chapters))));
 function watchFilm() {
+  if (PAGE === 'engineering') { leaveTo(FILM_URL); return; }
   explicitPlay = true;
+  if (PAGE === 'film') {
+    window.scrollTo({top:track.offsetTop, behavior:'instant'});
+    filmWasRequested = true;
+    if (mode === 'film' && film.currentTime > 0) { film.currentTime = 0; film.play().then(beginMovieRender).catch(()=>{}); }
+    else startMovie();
+    return;
+  }
   if (mode === 'film') { film.currentTime=0; film.play().then(beginMovieRender).catch(()=>{}); }
   else { gotoProgress(.982); if (scrollProgress >= STORY.film) startMovie(); }
 }
 $('#watch-film').addEventListener('click',watchFilm);
+// engineering.html#Battery opens the scroll at that chapter (used by the highlight cards).
+function gotoChapterFromHash() {
+  if (location.hash.length < 2) return;
+  const wanted = decodeURIComponent(location.hash.slice(1)).toLowerCase();
+  const index = chapters.findIndex(chapter=>String(chapter.nav || '').toLowerCase() === wanted);
+  if (index >= 0) gotoProgress(STORY.begin+(STORY.assembled-STORY.begin)*Math.min(.999,chapterCenter(index,chapters)+.02), false);
+}
 function restart(value=0) {
+  if (PAGE === 'film') { leaveTo(ENGINEERING_URL); return; }
   stopMovie(); selectedChapter=-1; setMode('assembly');
   gotoProgress(value); updateScroll();
 }
@@ -468,7 +527,7 @@ function setFilmSound(enabled) {
 $('#sound-toggle').addEventListener('click',()=>setFilmSound(film.muted));
 document.addEventListener('esmi:landing-action',event=>{
   const detail = event.detail || {};
-  if (detail.action === 'engineering') restart(STORY.begin+.001);
+  if (detail.action === 'engineering') { if (PAGE === 'film') leaveTo(ENGINEERING_URL); else restart(STORY.begin+.001); }
   else if (detail.action === 'film') watchFilm();
   else if (detail.action === 'sound') setFilmSound(typeof detail.enabled === 'boolean' ? detail.enabled : film.muted);
 });
@@ -492,13 +551,26 @@ try {
   manifest = await response.json();
   if (!Array.isArray(manifest.frames) || !manifest.frames.length) throw new Error('The engineering sequence is empty.');
   configureExperience(manifest);
-  handoff = await imageAt(manifest.handoff || manifest.frames.at(-1));
-  resize();
-  await showFrame(storyAt(scrollProgress,manifest.frames.length,chapters).frame);
+  if (PAGE === 'film') {
+    // The film page never shows the assembly: it opens on the film's own first frame.
+    const poster = filmConfig.poster || manifest.film?.poster || manifest.handoff;
+    handoff = currentFrame = await imageAt(poster);
+    canvas.style.backgroundImage = `url(${JSON.stringify(poster)})`;
+    setMode('film');
+    resize();
+    drawSource(handoff);
+    updateMovieUI();
+  } else {
+    handoff = await imageAt(manifest.handoff || manifest.frames.at(-1));
+    resize();
+    await showFrame(storyAt(scrollProgress,manifest.frames.length,chapters).frame);
+  }
   loading.hidden=true;
   document.body.classList.add('scene-ready');
   stage.dataset.ready='true';
   updateScroll();
+  if (PAGE === 'film' && location.hash === '#film') watchFilm();
+  if (PAGE === 'engineering') { gotoChapterFromHash(); addEventListener('hashchange',gotoChapterFromHash); }
 } catch (error) {
   loading.textContent='The engineering sequence could not load. Refresh to retry.';
   console.warn(error.message);

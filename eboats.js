@@ -27,7 +27,7 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const finePointer = matchMedia('(any-pointer:fine)');
 const $ = (s, r = document) => r.querySelector(s);
 let root, stage, scroller, grid, canvas, cursorEl, gl, program, cards = [];
-let open = false, busy = false, raf = 0, lastScroll = 0, velocity = 0, chapters = null, startedAt = performance.now();
+let open = false, busy = false, raf = 0, lastScroll = 0, velocity = 0, startedAt = performance.now();
 const view = { x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0 };
 const pointer = { x: -100, y: -100, tx: -100, ty: -100, vx: 0, vy: 0, scale: 1, ts: 1, seen: false };
 const magnets = new Map();
@@ -727,29 +727,13 @@ function filter(group) {
   else { if (!wheelActive) scrollCurrent = scroller.scrollTop; scrollTarget = 0; wheelActive = true; }
 }
 
-async function loadChapters() {
-  if (chapters) return chapters;
-  try {
-    const config = JSON.parse($('#experience-config')?.textContent || '{}');
-    chapters = (await (await fetch(config.manifest)).json()).chapters || [];
-  } catch { chapters = []; }
-  return chapters;
-}
-
 async function choose(item) {
   if (item.go.film) {
     await close(() => document.dispatchEvent(new CustomEvent('esmi:landing-action', { detail: { action: 'film' } })));
     return;
   }
-  const chapter = (await loadChapters()).find(c => c.nav === item.go.chapter);
-  await close(() => {
-    const track = $('#experience');
-    if (!track) return;
-    const center = chapter ? (Number(chapter.start) + Number(chapter.end)) / 2 : 0;
-    // Same mapping as timeline.js: scroll .055 → .9 covers the assembly.
-    const progress = .055 + (.9 - .055) * Math.min(.999, center + .02);
-    window.scrollTo({ top: track.offsetTop + (track.offsetHeight - innerHeight) * progress, behavior: 'instant' });
-  });
+  // The assembly now lives on its own page; open it at this card's chapter.
+  await close(() => { location.href = `./engineering.html#${encodeURIComponent(item.go.chapter)}`; });
 }
 
 document.addEventListener('esmi:landing-action', event => {

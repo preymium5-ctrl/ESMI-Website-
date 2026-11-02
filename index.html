@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="esmi-page">
+<html lang="en" class="esmi-page" data-page="film">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -21,7 +21,7 @@
   <script>if(!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('landing-reveal-pending')</script>
 </head>
 <body>
-  <a class="skip-link" href="#experience">Enter the ESMI experience</a>
+  <a class="skip-link" href="#experience">Watch the ESMI film</a>
   <section id="landing" class="landing-root landing-ocean" aria-labelledby="landing-title">
     <div class="landing-media" aria-hidden="true">
       <picture class="landing-poster"><source media="(max-width:760px) and (max-aspect-ratio:4/5)" srcset="./assets/landing/dock-v3-portrait-web.webp"><img src="./assets/landing/dock-v3-web.webp" alt="" fetchpriority="high"></picture>
@@ -75,7 +75,7 @@
    </div>
    <button class="landing-circle landing-menu-close" type="button" aria-label="Close menu" autofocus><span></span><span></span></button>
   </dialog>
-  <main id="experience" aria-label="The ESMI E-Boat cinematic assembly experience">
+  <main id="experience" aria-label="The ESMI film">
     <section id="stage" aria-labelledby="experience-title">
       <div id="media-stage" class="media-stage">
         <canvas id="assembly-canvas" aria-label="The ESMI solar catamaran, from separated components to the completed boat" role="img"></canvas>
@@ -131,7 +131,7 @@
     </section>
   </main>
   <footer class="site-footer"><span>ESMI</span><p>From the sun. To the sea.</p><span class="footer-note">A visual story of the ESMI E-Boat.</span></footer>
-  <noscript><p class="noscript-message">Enable JavaScript to experience the scroll-controlled assembly. <a href="./assets/film-v3/esmi-film.mp4">Watch the ESMI film</a>.</p></noscript>
+  <noscript><p class="noscript-message">Enable JavaScript for the full experience. <a href="./assets/film-v3/esmi-film.mp4">Watch the ESMI film</a> or <a href="./engineering.html">see the engineering</a>.</p></noscript>
   <script id="experience-config" type="application/json">{"manifest":"./assets/v3/assembly.json"}</script>
   <script type="module" src="./app.js"></script>
   <script type="module" src="./landing.js"></script>

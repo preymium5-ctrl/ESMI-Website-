@@ -245,13 +245,16 @@ function updateScrollLock() {
   document.documentElement.classList.toggle('landing-scroll-locked', scrollY < 2);
 }
 addEventListener('scroll',updateScrollLock,{passive:true});
+// Always open on the landing: a reload must not restore a half-scrolled page (index.html
+// turns off the browser's scroll restoration), except for links into the page (#film).
+if (!location.hash) scrollTo({top:0,behavior:'instant'});
 updateScrollLock();
 
 // Hover tick on "Explore the E-Boat", modelled on unseen.co's button hover sound: a soft
 // ~1.4 kHz tone with a quick pitch dip, held for ~4 ms, mostly gone by 9 ms, with a faint
-// tail to ~35 ms. Synthesised here rather than reusing their recording. Like theirs it
-// follows the site sound: silent until the visitor turns sound on (the click that does so is
-// also what lets the browser start audio), and it skips touch, where there is no hover.
+// tail to ~35 ms. Synthesised here rather than reusing their recording. It plays whether or
+// not the background sound is on. Browsers only allow audio after the visitor's first click,
+// tap or key press on the page, so that first interaction starts it; touch has no hover.
 let uiAudio = null;
 function startUiAudio() {
   const Context = window.AudioContext || window.webkitAudioContext;
@@ -260,11 +263,10 @@ function startUiAudio() {
   if (uiAudio.state === 'suspended') uiAudio.resume();
   return uiAudio;
 }
-utility.addEventListener('click',()=>{ if (utilityMode === 'sound' && !video.muted) startUiAudio(); });
+for (const type of ['pointerdown','keydown']) addEventListener(type,startUiAudio,{capture:true,passive:true});
 
 function playHoverTick() {
-  if (utilityMode !== 'sound' || video.muted) return;
-  const audio = startUiAudio();
+  const audio = uiAudio;
   if (!audio || audio.state !== 'running') return;
   const t = audio.currentTime + .005;
   const tone = audio.createOscillator();
@@ -276,10 +278,10 @@ function playHoverTick() {
   tone.frequency.exponentialRampToValueAtTime(1340,t + .016);
   const level = audio.createGain();
   level.gain.setValueAtTime(.0001,t);
-  level.gain.exponentialRampToValueAtTime(.08,t + .0015);
-  level.gain.linearRampToValueAtTime(.07,t + .004);
-  level.gain.exponentialRampToValueAtTime(.004,t + .0085);
-  level.gain.exponentialRampToValueAtTime(.0025,t + .026);
+  level.gain.exponentialRampToValueAtTime(.16,t + .0015);
+  level.gain.linearRampToValueAtTime(.14,t + .004);
+  level.gain.exponentialRampToValueAtTime(.008,t + .0085);
+  level.gain.exponentialRampToValueAtTime(.005,t + .026);
   level.gain.exponentialRampToValueAtTime(.0001,t + .034);
   tone.connect(level).connect(audio.destination);
   tone.start(t);

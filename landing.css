@@ -165,3 +165,6 @@ html.landing-scroll-locked{overflow:hidden;overscroll-behavior:none}
 /* Fill the live viewport (dvh follows mobile address bars) and bleed 1px, so the film
    stage below never shows as a light strip under the landing at fractional scaling. */
 .landing-root{height:calc(100vh + 1px);height:calc(100dvh + 1px)}
+/* ESMI wave mark beside the wordmark. */
+.landing-logo{align-items:center}
+.landing-logo>.logo-mark{height:1em;width:auto;margin:0 .1em 0 -.13em;flex:none}

@@ -564,6 +564,7 @@ $('#sound-toggle').addEventListener('click',()=>setFilmSound(film.muted));
 document.addEventListener('esmi:landing-action',event=>{
   const detail = event.detail || {};
   if (detail.action === 'engineering') { if (PAGE === 'film') leaveTo(ENGINEERING_URL); else restart(STORY.begin+.001); }
+  else if (detail.action === 'inspect') leaveTo('./inspect.html');
   else if (detail.action === 'film') watchFilm();
   else if (detail.action === 'sound') setFilmSound(typeof detail.enabled === 'boolean' ? detail.enabled : film.muted);
 });

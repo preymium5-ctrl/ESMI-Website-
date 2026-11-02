@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en" class="esmi-page" data-page="inspect">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#c9c9c7">
+  <meta name="description" content="Inspect the ESMI E-Boat in 3D: turn it, zoom in on the helm, the seats and the solar canopy, and pull it apart to see the drive, batteries and wiring.">
+  <title>ESMI — Inspect</title>
+  <link rel="preload" href="./assets/fonts/NeueMontreal-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./assets/fonts/SaolDisplay-LightItalic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./assets/inspect/esmi-eboat.glb" as="fetch" type="model/gltf-binary" crossorigin>
+  <link rel="stylesheet" href="./inspect.css">
+  <script type="importmap">
+  {"imports":{
+    "three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }}
+  </script>
+</head>
+<body>
+  <main class="ins" aria-labelledby="ins-title">
+    <div class="ins-stage">
+      <canvas class="ins-canvas" aria-label="Interactive 3D model of the ESMI E-Boat. Drag to turn it, scroll or pinch to zoom." role="img"></canvas>
+      <img class="ins-fallback" src="./assets/v3/frames/frame-0241.webp" alt="The ESMI E-Boat, fully assembled" hidden>
+    </div>
+
+    <header class="ins-header">
+      <a class="ins-logo" href="./" aria-label="ESMI home">ESMI</a>
+      <nav class="ins-nav" aria-label="ESMI navigation">
+        <a class="ins-nav-link" href="./">Index</a>
+        <a class="ins-nav-link" href="./engineering.html">Engineering</a>
+        <a class="ins-nav-link" href="./inspect.html" aria-current="page">Inspect</a>
+        <a class="ins-nav-link" href="./#film">Film</a>
+      </nav>
+    </header>
+
+    <div class="ins-copy">
+      <p class="ins-eyebrow">INSPECT</p>
+      <h1 id="ins-title"><span class="ins-serif">Every angle.</span><span class="ins-sans">Up close.</span></h1>
+      <p class="ins-hint">Drag to turn the boat. Scroll or pinch to zoom.</p>
+    </div>
+
+    <nav class="ins-views" aria-label="Camera views">
+      <button type="button" class="ins-view" data-view="overview" aria-pressed="true">Overview</button>
+      <button type="button" class="ins-view" data-view="bow" aria-pressed="false">Twin hulls</button>
+      <button type="button" class="ins-view" data-view="helm" aria-pressed="false">Helm</button>
+      <button type="button" class="ins-view" data-view="seats" aria-pressed="false">Seating</button>
+      <button type="button" class="ins-view" data-view="solar" aria-pressed="false">Solar canopy</button>
+      <button type="button" class="ins-view" data-view="drive" aria-pressed="false">Drive</button>
+    </nav>
+
+    <div class="ins-tools">
+      <label class="ins-explode" hidden>
+        <span>Assembled</span>
+        <input type="range" min="0" max="1" step="0.001" value="0" aria-label="Pull the boat apart">
+        <span>Pulled apart</span>
+      </label>
+      <div class="ins-zoom" role="group" aria-label="Zoom">
+        <button type="button" class="ins-circle" data-zoom="out" aria-label="Zoom out">−</button>
+        <button type="button" class="ins-circle" data-zoom="in" aria-label="Zoom in">+</button>
+      </div>
+      <button type="button" class="ins-pill ins-reset">Reset view <span aria-hidden="true">↺</span></button>
+    </div>
+
+    <p class="ins-status" role="status"><span class="ins-dot"></span><span class="ins-status-text">Loading the model</span></p>
+  </main>
+  <div class="ins-grain" aria-hidden="true"></div>
+  <span class="ins-cursor" aria-hidden="true"></span>
+  <script type="module" src="./inspect.js"></script>
+  <script>
+    // If the 3D library cannot load at all (offline, blocked CDN), show a still instead.
+    setTimeout(function(){ if (document.documentElement.classList.contains('ins-booted')) return;
+      document.querySelector('.ins-fallback').hidden = false; document.querySelector('.ins-canvas').hidden = true;
+      document.querySelector('.ins-status-text').textContent = 'The 3D viewer could not load. Showing a still of the boat.';
+      document.querySelectorAll('.ins-views, .ins-tools').forEach(function(el){ el.hidden = true; }); }, 9000);
+  </script>
+</body>
+</html>

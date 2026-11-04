@@ -13,7 +13,7 @@ function setup() {
     <div class="film-ad-caption" aria-live="polite"></div>
     <div class="film-ad-outro" aria-hidden="true">
       <div class="film-ad-logo">
-        <img class="film-ad-mark" src="${new URL('./assets/film-v3/esmi-mark.svg', import.meta.url).href}" alt="">
+        <img class="film-ad-mark" src="${new URL('./assets/film-v3/esmi-mark.svg?v=2', import.meta.url).href}" alt="">
         <div class="film-ad-word"><span>E</span><span>S</span><span>M</span><span>I</span></div>
       </div>
       <span class="film-ad-rule"></span>
@@ -77,7 +77,7 @@ function setup() {
 
 async function loadLogo(container) {
   try {
-    const response = await fetch(new URL('./assets/film-v3/esmi-logo-light.svg', import.meta.url));
+    const response = await fetch(new URL('./assets/film-v3/esmi-logo-light.svg?v=2', import.meta.url));
     if (!response.ok) throw new Error(`Logo returned ${response.status}`);
     const source = new DOMParser().parseFromString(await response.text(), 'image/svg+xml');
     const logo = source.documentElement;

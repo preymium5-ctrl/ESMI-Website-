@@ -90,3 +90,52 @@ a{color:inherit;text-decoration:none}
 /* ESMI wave mark beside the wordmark. */
 .ins-logo{display:inline-flex;align-items:center}
 .ins-logo>.logo-mark{height:1em;width:auto;margin:0 .1em 0 -.13em;flex:none}
+
+/* Parts inventory: a frosted panel on the right. Each part can be added or removed and
+   repainted; on small screens it folds into a pill that opens over the scene. */
+.ins-inventory{position:absolute;right:var(--gutter);top:112px;z-index:6;width:min(330px,calc(100vw - 2*var(--gutter)));max-height:calc(100% - 112px - 112px);display:flex;flex-direction:column;border-radius:26px;background:#ffffff66;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 10px 40px #1415180f;overflow:hidden}
+.ins-inventory[hidden]{display:none}
+.ins-inv-toggle{display:flex;align-items:center;gap:10px;width:100%;padding:16px 20px;font-size:18px;letter-spacing:-.4px;text-align:left}
+.ins-inv-count{font-size:13px;color:var(--muted);letter-spacing:0}
+.ins-inv-chevron{margin-left:auto;width:9px;height:9px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .35s cubic-bezier(.22,1,.36,1)}
+.ins-inventory[data-open="true"] .ins-inv-chevron{transform:translateY(2px) rotate(-135deg)}
+.ins-inv-body{display:flex;flex-direction:column;min-height:0;padding:0 14px 14px}
+.ins-inventory[data-open="false"] .ins-inv-body{display:none}
+.ins-inventory[data-open="false"]{width:auto}
+.ins-inv-hint{margin:0 6px 12px;font-size:13px;line-height:1.35;color:var(--muted)}
+.ins-inv-actions{display:flex;gap:6px;margin:0 0 10px}
+.ins-inv-actions button{flex:1;padding:8px 6px;border-radius:20px;background:#ffffffa6;font-size:13px;letter-spacing:-.2px;transition:background .25s,color .25s}
+@media(hover:hover){.ins-inv-actions button:hover{background:#141518;color:#f6f3ee}}
+.ins-inv-list{list-style:none;margin:0;padding:0;overflow-y:auto;scrollbar-width:thin;display:flex;flex-direction:column;gap:4px}
+.ins-inv-item{border-radius:16px;background:#ffffff8c;transition:background .3s,opacity .3s}
+.ins-inv-item.is-off{background:#ffffff40}
+.ins-inv-item.is-off .ins-inv-name{color:var(--muted)}
+.ins-inv-row{display:flex;align-items:center;gap:10px;padding:9px 10px 9px 12px}
+.ins-inv-name{flex:1;display:flex;align-items:center;gap:10px;min-width:0;font-size:15px;letter-spacing:-.25px;cursor:pointer;transition:color .3s}
+.ins-inv-name input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.ins-inv-check{flex:none;width:20px;height:20px;border-radius:7px;border:1.5px solid #24242566;display:grid;place-items:center;transition:background .25s,border-color .25s}
+.ins-inv-check:after{content:'';width:9px;height:5px;border-left:1.8px solid #fff;border-bottom:1.8px solid #fff;transform:translateY(-1px) rotate(-45deg);opacity:0;transition:opacity .2s}
+.ins-inv-name input:checked+.ins-inv-check{background:#141518;border-color:#141518}
+.ins-inv-name input:checked+.ins-inv-check:after{opacity:1}
+.ins-inv-name input:focus-visible+.ins-inv-check{outline:2px solid var(--ink);outline-offset:2px}
+.ins-inv-swatches{display:flex;gap:6px}
+.ins-inv-swatch{width:24px;height:24px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1px #0000001f,0 0 0 2px #ffffffcc;transition:transform .25s,box-shadow .25s}
+.ins-inv-swatch:hover,.ins-inv-swatch[aria-expanded="true"]{transform:scale(1.12);box-shadow:inset 0 0 0 1px #0000001f,0 0 0 2px #141518}
+.ins-inv-palette{padding:2px 12px 12px}
+.ins-inv-palette[hidden]{display:none}
+.ins-inv-palette-title{margin:0 0 8px;font-size:12px;letter-spacing:.2px;color:var(--muted);text-transform:uppercase}
+.ins-inv-colors{display:flex;flex-wrap:wrap;gap:7px}
+.ins-inv-color,.ins-inv-custom{position:relative;width:26px;height:26px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1px #0000001f;transition:transform .2s,box-shadow .2s;cursor:pointer}
+.ins-inv-color:hover{transform:scale(1.12)}
+.ins-inv-color[aria-pressed="true"]{box-shadow:inset 0 0 0 1px #0000001f,0 0 0 2px #fff,0 0 0 3.5px #141518}
+.ins-inv-custom{background:conic-gradient(#e0473c,#f0c93a,#4fbf6a,#31adb5,#2f5fb3,#9b4fc4,#e0473c);overflow:hidden}
+.ins-inv-custom input{position:absolute;inset:-6px;width:calc(100% + 12px);height:calc(100% + 12px);opacity:0;cursor:pointer;border:0;padding:0}
+@media(max-width:1100px){.ins-inventory{top:96px;max-height:calc(100% - 96px - 104px)}}
+@media(max-width:760px){
+  .ins-inventory{top:auto;bottom:140px;right:var(--gutter);max-height:calc(100% - 140px - 200px)}
+  .ins-inventory[data-open="true"]{left:var(--gutter);width:auto;max-height:min(44vh,calc(100% - 340px))}
+  .ins-inv-toggle{padding:12px 16px;font-size:15px}
+  .ins-inv-hint{display:none}
+  /* Keep the boat in view while the sheet is open: the title steps aside. */
+  .ins:has(.ins-inventory[data-open="true"]) .ins-copy{opacity:0;transition:opacity .3s}
+}

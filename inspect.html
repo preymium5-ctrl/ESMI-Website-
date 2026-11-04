@@ -82,6 +82,21 @@
       <button type="button" class="ins-pill ins-reset">Reset view <span aria-hidden="true">↺</span></button>
     </div>
 
+    <aside class="ins-inventory" aria-label="Parts inventory" data-open="false" hidden>
+      <button type="button" class="ins-inv-toggle" aria-expanded="false" aria-controls="ins-inv-body">
+        <span>Inventory</span><span class="ins-inv-count">0/0</span><span class="ins-inv-chevron" aria-hidden="true"></span>
+      </button>
+      <div class="ins-inv-body" id="ins-inv-body">
+        <p class="ins-inv-hint">Add or remove parts to build the boat, and pick a colour for each.</p>
+        <div class="ins-inv-actions">
+          <button type="button" data-inv="all">Add all</button>
+          <button type="button" data-inv="none">Clear all</button>
+          <button type="button" data-inv="colors">Reset colours</button>
+        </div>
+        <ul class="ins-inv-list"></ul>
+      </div>
+    </aside>
+
     <p class="ins-status" role="status"><span class="ins-dot"></span><span class="ins-status-text">Loading the model</span></p>
   </main>
   <div class="ins-grain" aria-hidden="true"></div>
@@ -92,7 +107,7 @@
     setTimeout(function(){ if (document.documentElement.classList.contains('ins-booted')) return;
       document.querySelector('.ins-fallback').hidden = false; document.querySelector('.ins-canvas').hidden = true;
       document.querySelector('.ins-status-text').textContent = 'The 3D viewer could not load. Showing a still of the boat.';
-      document.querySelectorAll('.ins-views, .ins-tools').forEach(function(el){ el.hidden = true; }); }, 9000);
+      document.querySelectorAll('.ins-views, .ins-tools, .ins-inventory').forEach(function(el){ el.hidden = true; }); }, 9000);
   </script>
 </body>
 </html>

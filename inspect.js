@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { setupInventory } from './inspect-inventory.js';
 
 const MODEL = './assets/inspect/esmi-eboat.glb';
 const $ = s => document.querySelector(s);
@@ -183,6 +184,7 @@ loader.load(MODEL, gltf => {
   // Arrive with a short dolly-in.
   camera.position.addScaledVector(camera.position.clone().sub(controls.target).normalize(), 1.6);
   fly(overview, 1.6);
+  setupInventory(model, { reduced: reduced.matches });
   status.classList.add('is-done');
   root.classList.add('ins-ready');
 }, event => {
@@ -196,7 +198,7 @@ function showFallback(message) {
   $('.ins-fallback').hidden = false;
   canvas.hidden = true;
   statusText.textContent = message;
-  document.querySelectorAll('.ins-views, .ins-tools').forEach(el => { el.hidden = true; });
+  document.querySelectorAll('.ins-views, .ins-tools, .ins-inventory').forEach(el => { el.hidden = true; });
 }
 
 /* ------------------------------------------------------------ cursor -------- */
@@ -208,13 +210,46 @@ addEventListener('pointermove', event => {
   if (!ring.seen) { ring.x = ring.tx = event.clientX; ring.y = ring.ty = event.clientY; ring.seen = true; }
   ring.tx = event.clientX; ring.ty = event.clientY;
   root.classList.add('ins-pointer');
-  const control = event.target.closest?.('a, button, input');
+  const control = event.target.closest?.('a, button, input, label');
   root.dataset.cursorMode = dragging ? 'drag' : control ? 'control' : 'scene';
   ring.ts = dragging ? 0.75 : control ? 1.55 : 1;
 }, { passive: true });
 canvas.addEventListener('pointerdown', () => { dragging = true; root.dataset.cursorMode = 'drag'; ring.ts = 0.75; });
 addEventListener('pointerup', () => { dragging = false; root.dataset.cursorMode = 'scene'; ring.ts = 1; });
 document.addEventListener('pointerleave', () => root.classList.remove('ins-pointer'));
+
+/* ------------------------------------------------------------ inventory room -- */
+// While the inventory is open, slide (and on small screens shrink) the rendered view so the
+// boat sits in the space beside it: left of the panel on desktop, above the sheet on phones.
+const inventory = $('.ins-inventory');
+const shift = { x: 0, y: 0, z: 1, tx: 0, ty: 0, tz: 1 };
+function updateShiftTarget() {
+  shift.tx = shift.ty = 0; shift.tz = 1;
+  if (!inventory || inventory.hidden || inventory.dataset.open !== 'true') return;
+  const r = inventory.getBoundingClientRect();
+  if (innerWidth <= 760) {
+    shift.tz = THREE.MathUtils.clamp((r.top - 70) / (innerHeight * .5), .5, 1);
+    shift.ty = innerHeight / 2 - (70 + r.top) / 2;
+  } else {
+    shift.tz = THREE.MathUtils.clamp(r.left / innerWidth + .12, .82, 1);
+    shift.tx = (innerWidth / 2 - r.left / 2) * .8;
+  }
+}
+if (inventory) new MutationObserver(updateShiftTarget).observe(inventory, { attributes: true, attributeFilter: ['data-open', 'hidden'] });
+addEventListener('resize', updateShiftTarget);
+function applyShift(dt) {
+  const k = reduced.matches ? 1 : 1 - Math.exp(-dt / 0.18);
+  shift.x += (shift.tx - shift.x) * k; shift.y += (shift.ty - shift.y) * k; shift.z += (shift.tz - shift.z) * k;
+  const resting = !shift.tx && !shift.ty && shift.tz === 1;
+  if (resting && Math.abs(shift.x) < 0.5 && Math.abs(shift.y) < 0.5 && Math.abs(shift.z - 1) < 0.002) {
+    if (camera.view?.enabled) camera.clearViewOffset();
+    return;
+  }
+  // A view window larger than the full image (z < 1) zooms out; its offset, in full-image
+  // pixels, moves the boat by shift.x / shift.y screen pixels.
+  const w = innerWidth, h = innerHeight, vw = w / shift.z, vh = h / shift.z;
+  camera.setViewOffset(w, h, (w - vw) / 2 + shift.x / shift.z, (h - vh) / 2 + shift.y / shift.z, vw, vh);
+}
 
 /* ------------------------------------------------------------ loop ---------- */
 const clock = new THREE.Clock();
@@ -224,6 +259,7 @@ function frame(now) {
   if (Math.abs(explodeTarget - explodeNow) > 1e-4) explodeNow += (explodeTarget - explodeNow) * (1 - Math.exp(-dt / 0.28));
   applyExplode();
   controls.update();
+  applyShift(dt);
   renderer.render(scene, camera);
   const follow = 1 - Math.exp(-dt / 0.045);
   ring.x += (ring.tx - ring.x) * follow; ring.y += (ring.ty - ring.y) * follow;

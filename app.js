@@ -136,7 +136,20 @@ let lastBackdropTime = -10;
 let filmBufferingRequested = false;
 let filmBlendStart = 0;
 const backdropColors = new WeakMap();
-const cache = new Map();
+// Assembly frames. On a first visit every frame has to come over the network, and waiting
+// for each one as the visitor scrolls made the boat freeze and jump. Now, as soon as the page
+// opens, every frame is downloaded in the background and kept as a blob: a 640x360 preview of
+// each, packed into one ~1.8 MB file so they all arrive in a single request (see
+// scripts/build-frame-previews.py), and, alongside it in scroll order, the full 1080p frames
+// (~60 KB each, ~15 MB). Frames are decoded off the main thread
+// (createImageBitmap) into small windows around the current one. While the full frame is on
+// its way its preview is shown, or failing that the nearest ready frame, so the boat keeps
+// moving with the scroll and sharpens as the full frames land.
+const blobs = new Map();         // 'full:i' / 'small:i' -> Promise<Blob>, the compressed file
+const decoded = new Map();       // index -> Promise<ImageBitmap | HTMLImageElement>, full frames
+const ready = new Map();         // index -> the decoded full frame, once it has arrived
+const smallDecoded = new Map();  // the same for the previews
+const smallReady = new Map();
 
 function imageAt(path) {
   return new Promise((resolve, reject) => {
@@ -148,43 +161,119 @@ function imageAt(path) {
   });
 }
 
-function trimCache() {
-  // 1080p decoded frames are large: bound the working set on every device.
-  const limit = matchMedia('(max-width:760px)').matches ? 6 : 10;
-  if (cache.size <= limit) return;
-  const candidates = [...cache.keys()].sort((a,b) => Math.abs(b-targetFrame)-Math.abs(a-targetFrame));
+let previewPack = null;
+function loadPreviewPack() {
+  const pack = manifest.previewPack;
+  previewPack ??= fetch(pack.src, {priority: 'high'}).then(response => {
+    if (!response.ok) throw new Error(`Previews could not load: ${pack.src}`);
+    return response.arrayBuffer();
+  }).then(buffer => {
+    for (let i = 0; i + 1 < pack.offsets.length; i++) {
+      const blob = new Blob([buffer.slice(pack.offsets[i], pack.offsets[i + 1])], {type: pack.type || 'image/webp'});
+      blobs.set(`small:${i}`, Promise.resolve(blob));
+    }
+  });
+  return previewPack;
+}
+function frameBlob(index, priority = 'high', kind = 'full') {
+  const key = `${kind}:${index}`;
+  if (kind === 'small' && !blobs.has(key)) return loadPreviewPack().then(() => blobs.get(key) || Promise.reject(new Error('No preview')));
+  if (!blobs.has(key)) {
+    const path = manifest.frames[index];
+    const pending = fetch(path, {priority}).then(response => {
+      if (!response.ok) throw new Error(`Image could not load: ${path}`);
+      return response.blob();
+    });
+    blobs.set(key, pending);
+    pending.catch(() => blobs.delete(key));
+  }
+  return blobs.get(key);
+}
+async function decodeBlob(blob) {
+  if (window.createImageBitmap) return createImageBitmap(blob);
+  const url = URL.createObjectURL(blob);
+  try { return await imageAt(url); } finally { URL.revokeObjectURL(url); }
+}
+// Fetch every frame once, nearest to `start` first, a few at a time and at low priority so
+// the frames actually on screen always come first. Skipped when the visitor asks to save data.
+function prefetchFrames(start = 0) {
+  if (navigator.connection?.saveData) return;
+  if (manifest.previewPack) loadPreviewPack().catch(() => {});
+  const order = [...manifest.frames.keys()].sort((a,b) => Math.abs(a-start)-Math.abs(b-start) || a-b);
+  let next = 0;
+  const pump = () => { if (next < order.length) frameBlob(order[next++], 'low').catch(() => {}).finally(pump); };
+  for (let lane = 0; lane < 6; lane++) pump();
+}
+
+function trimCache(pending, done, limit) {
+  // Decoded frames are large (1080p is about 8 MB each): bound the working set on every device.
+  if (pending.size <= limit) return;
+  const candidates = [...pending.keys()].sort((a,b) => Math.abs(b-targetFrame)-Math.abs(a-targetFrame));
   for (const index of candidates) {
-    if (cache.size <= limit) break;
-    if (index !== targetFrame && index !== frameIndex) cache.delete(index);
+    if (pending.size <= limit) break;
+    if (index === targetFrame || index === frameIndex) continue;
+    pending.delete(index);
+    const image = done.get(index);
+    done.delete(index);
+    if (image && image !== currentFrame) image.close?.();
   }
 }
-function loadFrame(index) {
+function decodeFrame(index, kind) {
+  const [pending, done] = kind === 'small' ? [smallDecoded, smallReady] : [decoded, ready];
   index = clamp(index, 0, manifest.frames.length - 1);
-  if (!cache.has(index)) {
-    const pending = imageAt(manifest.frames[index]);
-    cache.set(index, pending);
-    pending.catch(() => cache.delete(index));
+  if (!pending.has(index)) {
+    const job = frameBlob(index, 'high', kind).then(decodeBlob).then(image => {
+      if (pending.get(index) === job) done.set(index, image);
+      return image;
+    });
+    pending.set(index, job);
+    job.catch(() => pending.delete(index));
   }
-  trimCache();
-  return cache.get(index);
+  const phone = matchMedia('(max-width:760px)').matches;
+  trimCache(pending, done, kind === 'small' ? 40 : phone ? 8 : 14);
+  return pending.get(index);
+}
+const loadFrame = index => decodeFrame(index, 'full');
+const loadPreview = index => decodeFrame(index, 'small');
+function nearestReady(index) {
+  let best = null, image = null;
+  for (const [map, bias] of [[ready, 0], [smallReady, .5]]) for (const [k, frame] of map) {
+    if (best === null || Math.abs(k-index)+bias < Math.abs(best-index)) { best = k; image = frame; }
+  }
+  return best === null ? null : {index: best, image};
+}
+function present(index, image) {
+  currentFrame = image;
+  frameIndex = index;
+  loading.hidden = true;
+  stage.dataset.frame = String(index);
+  stage.dataset.frameQuality = (image.naturalWidth || image.width) < 1000 ? 'preview' : 'full';
+  queueDraw();
 }
 async function showFrame(index) {
   if (!manifest || mode === 'film') return;
+  const last = manifest.frames.length - 1;
+  const direction = index >= frameIndex ? 1 : -1;
   targetFrame = index;
-  const token = ++renderToken;
+  if (index === last) { present(last, handoff); return; }
+  const pending = loadFrame(index);
+  for (const offset of [1, 2, 3, 4]) loadFrame(clamp(index + offset * direction, 0, last)).catch(() => {});
+  if (ready.has(index)) { present(index, ready.get(index)); return; }
+  // Not decoded yet: show its preview, or the nearest ready frame, then the full one when it lands.
+  if (manifest.previewPack) {
+    if (smallReady.has(index)) present(index, smallReady.get(index));
+    else loadPreview(index).then(image => {
+      if (mode !== 'film' && targetFrame === index && !ready.has(index) && smallReady.has(index)) present(index, image);
+    }).catch(() => {});
+  }
+  if (frameIndex !== index) {
+    const near = nearestReady(index);
+    if (near && Math.abs(near.index-index) < Math.abs(frameIndex-index)) present(near.index, near.image);
+  }
   try {
-    const image = index === manifest.frames.length - 1 ? handoff : await loadFrame(index);
-    if (token !== renderToken || mode === 'film') return;
-    const direction = index >= frameIndex ? 1 : -1;
-    currentFrame = image;
-    frameIndex = index;
-    loading.hidden = true;
-    stage.dataset.frame = String(index);
-    queueDraw();
-    for (const offset of [-1, 1, 2, 3]) {
-      const next = clamp(index + offset * direction, 0, manifest.frames.length - 1);
-      loadFrame(next).catch(() => {});
-    }
+    const image = await pending;
+    if (mode === 'film' || !ready.has(index)) return;
+    if (Math.abs(index-targetFrame) <= Math.abs(frameIndex-targetFrame)) present(index, image);
   } catch (error) {
     failedFrames++;
     if (failedFrames === 1) console.warn(error.message);
@@ -210,8 +299,9 @@ function sourceColor(source) {
 // (never cropping the boat sideways) and any space left at the edges is filled by
 // stretching the frame's own outermost studio pixels, so there is no visible box.
 function drawFullBleed(source) {
-  const sw = source.naturalWidth || source.videoWidth || manifest?.width || 1920;
-  const sh = source.naturalHeight || source.videoHeight || manifest?.height || 1080;
+  // Real pixel size of this source: full frames, low-resolution previews and bitmaps differ.
+  const sw = source.naturalWidth || source.videoWidth || source.width || manifest?.width || 1920;
+  const sh = source.naturalHeight || source.videoHeight || source.height || manifest?.height || 1080;
   const portrait = width < 760;
   // Desktop: fit the frame to the screen height. Phones: fit the boat (≈ 60% of
   // the frame width) to the screen width and lift it into the upper part of the screen.
@@ -598,6 +688,7 @@ try {
     drawSource(handoff);
     updateMovieUI();
   } else {
+    prefetchFrames(storyAt(scrollProgress,manifest.frames.length,chapters).frame);
     handoff = await imageAt(manifest.handoff || manifest.frames.at(-1));
     resize();
     await showFrame(storyAt(scrollProgress,manifest.frames.length,chapters).frame);

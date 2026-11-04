@@ -2,7 +2,8 @@
 #   assets/film-v3/esmi-mark.svg          header mark, browser-tab icon, film end-card image
 #   assets/film-v3/esmi-logo.svg          colour lockup (mark + ESMI)
 #   assets/film-v3/esmi-logo-light.svg    light lockup for the film's end card (animated by film-ad)
-#   favicon.ico, apple-touch-icon.png, assets/icon-192.png, assets/icon-512.png
+#   favicon.ico + assets/film-v3/esmi-favicon.svg (bold tile for browser tabs)
+#   apple-touch-icon.png, assets/icon-192.png, assets/icon-512.png
 # The lockups keep their existing ESMI letters; only the mark group is replaced.
 # Usage: python scripts/build-logo-assets.py <traced-mark.svg>
 import os, re, sys
@@ -67,5 +68,47 @@ def render(size, pad, background=None):
 render(512, .06).save(os.path.join(ROOT, 'assets', 'icon-512.png'))
 render(192, .06).save(os.path.join(ROOT, 'assets', 'icon-192.png'))
 render(180, .1, (255, 255, 255)).convert('RGB').save(os.path.join(ROOT, 'apple-touch-icon.png'))
-render(256, .02).save(os.path.join(ROOT, 'favicon.ico'), sizes=[(16, 16), (32, 32), (48, 48)])
+# 4. Favicon: the wide mark is tiny in a square tab icon, so the favicon is a bold tile: a
+#    dark-teal rounded square with the mark in light colours across most of its width, and
+#    the thin lines thickened by a fraction of a pixel at the smallest sizes.
+TILE, LIGHT = (5, 68, 78), {'boat': '#ffffff', 'sun-and-wave': '#3cc6c2'}
+def tile(size, grow):
+    big = size * 8
+    canvas = Image.new('RGBA', (big, big), (0, 0, 0, 0))
+    plate = np.zeros((big, big), np.uint8)
+    r = round(big * .22)
+    cv2.rectangle(plate, (r, 0), (big - r, big), 255, -1); cv2.rectangle(plate, (0, r), (big, big - r), 255, -1)
+    for cx, cy in ((r, r), (big - r - 1, r), (r, big - r - 1), (big - r - 1, big - r - 1)):
+        cv2.circle(plate, (cx, cy), r, 255, -1, cv2.LINE_AA)
+    out = np.zeros((big, big, 4), float)
+    out[..., :3] = TILE; out[..., 3] = plate / 255
+    x0, y0, w, h = view
+    k = big * .86 / w
+    ox, oy = (big - w * k) / 2, (big - h * k) / 2 + big * .02
+    grow_px = int(round(grow * 8))
+    for piece, _, d in pieces:
+        rgb = np.array([int(LIGHT[piece][i:i + 2], 16) for i in (1, 3, 5)], float)
+        mask = np.zeros((big, big), np.uint8)
+        for poly in polygons(d):
+            single = np.zeros_like(mask)
+            cv2.fillPoly(single, [np.round((poly - (x0, y0)) * k + (ox, oy)).astype(np.int32)], 255, cv2.LINE_AA)
+            mask = cv2.bitwise_xor(mask, single)
+        if grow_px: mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * grow_px + 1,) * 2))
+        a = (mask / 255.0) * (plate / 255.0)
+        out[..., :3] = out[..., :3] * (1 - a[..., None]) + rgb * a[..., None]
+    canvas = Image.fromarray(np.clip(np.dstack([out[..., :3], out[..., 3:] * 255]), 0, 255).astype(np.uint8), 'RGBA')
+    return canvas.resize((size, size), Image.LANCZOS)
+
+frames = {16: tile(16, .6), 32: tile(32, .4), 48: tile(48, .25)}
+frames[48].save(os.path.join(ROOT, 'favicon.ico'), sizes=[(16, 16), (32, 32), (48, 48)], append_images=[frames[16], frames[32]])
+
+# The same tile as an SVG tab icon (modern browsers prefer it and scale it sharply).
+x0, y0, w, h = view
+k = 512 * .86 / w
+ox, oy = (512 - w * k) / 2, (512 - h * k) / 2 + 512 * .02
+paths = ''.join(f'<path fill="{LIGHT[p]}" stroke="{LIGHT[p]}" stroke-width="5" stroke-linejoin="round" fill-rule="evenodd" d="{d}"/>' for p, _, d in pieces)
+open(os.path.join(FILM, 'esmi-favicon.svg'), 'w', encoding='utf-8', newline='\n').write(
+    f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><title>ESMI</title>'
+    f'<rect width="512" height="512" rx="113" fill="#05444e"/>'
+    f'<g transform="translate({ox:.2f} {oy:.2f}) scale({k:.5f}) translate({-x0:.2f} {-y0:.2f})">{paths}</g></svg>\n')
 print('logo assets written')

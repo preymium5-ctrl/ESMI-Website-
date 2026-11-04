@@ -13,7 +13,7 @@ a{color:inherit;text-decoration:none}
 /* Stage: the studio backdrop matches the renders (light cove fading to grey). */
 .ins-stage{position:absolute;inset:0;z-index:0;background:radial-gradient(120% 85% at 50% 38%,#e3e3e1 0%,#d2d2d0 45%,#b9b9b7 100%)}
 .ins-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
-.ins-canvas:active{cursor:grabbing}
+.ins-canvas{cursor:grab}.ins-canvas:active{cursor:grabbing}
 .ins-fallback{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 
 /* Header, as on the landing. */
@@ -59,14 +59,9 @@ a{color:inherit;text-decoration:none}
 .ins-dot{width:5px;height:5px;border-radius:50%;background:var(--ink);animation:ins-breathe 1.6s ease-in-out infinite}
 @keyframes ins-breathe{50%{opacity:.25}}
 
-/* Grain and ring cursor, as on the landing. */
+/* Grain, as on the landing. */
 .ins-grain{position:fixed;inset:0;z-index:30;pointer-events:none;opacity:.065;mix-blend-mode:multiply;
   background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.86' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23000' filter='url(%23n)' opacity='.65' d='M0 0h180v180H0z'/%3E%3C/svg%3E");background-size:180px}
-.ins-cursor{position:fixed;left:0;top:0;z-index:40;width:42px;height:42px;margin:-21px 0 0 -21px;border:1px solid #2c2b2d9c;border-radius:50%;pointer-events:none;opacity:0;transition:opacity .2s,background-color .25s,border-color .25s;will-change:transform}
-.ins-pointer .ins-cursor{opacity:1}
-[data-cursor-mode="control"] .ins-cursor{background:#ffffff33;border-color:#2c2b2d66}
-[data-cursor-mode="drag"] .ins-cursor{background:#ffffffcc;border-color:#fff}
-@media(any-pointer:fine){.ins-pointer,.ins-pointer :is(a,button,canvas,input){cursor:none!important}}
 :focus-visible{outline:2px solid var(--ink);outline-offset:4px}
 
 @media(max-width:1100px){:root{--gutter:28px}.ins-logo{font-size:38px}.ins-nav-link{font-size:20px}.ins-view{font-size:14px;padding:8px 12px}}
@@ -86,14 +81,13 @@ a{color:inherit;text-decoration:none}
   .ins-circle{width:44px;height:44px;font-size:20px}
   .ins-pill{min-height:44px;padding:8px 16px;font-size:14px}
 }
-@media(prefers-reduced-motion:reduce){.ins-cursor{display:none}}
 /* ESMI wave mark beside the wordmark. */
 .ins-logo{display:inline-flex;align-items:center}
 .ins-logo>.logo-mark{height:1em;width:auto;margin:0 .1em 0 -.13em;flex:none}
 
 /* Parts inventory: a frosted panel on the right. Each part can be added or removed and
    repainted; on small screens it folds into a pill that opens over the scene. */
-.ins-inventory{position:absolute;right:var(--gutter);top:112px;z-index:6;width:min(330px,calc(100vw - 2*var(--gutter)));max-height:calc(100% - 112px - 112px);display:flex;flex-direction:column;border-radius:26px;background:#ffffff66;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 10px 40px #1415180f;overflow:hidden}
+.ins-inventory{position:absolute;right:var(--gutter);top:112px;z-index:6;width:min(360px,calc(100vw - 2*var(--gutter)));max-height:calc(100% - 112px - 112px);display:flex;flex-direction:column;border-radius:26px;background:#ffffff66;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 10px 40px #1415180f;overflow:hidden}
 .ins-inventory[hidden]{display:none}
 .ins-inv-toggle{display:flex;align-items:center;gap:10px;width:100%;padding:16px 20px;font-size:18px;letter-spacing:-.4px;text-align:left}
 .ins-inv-count{font-size:13px;color:var(--muted);letter-spacing:0}
@@ -106,19 +100,30 @@ a{color:inherit;text-decoration:none}
 .ins-inv-actions{display:flex;gap:6px;margin:0 0 10px}
 .ins-inv-actions button{flex:1;padding:8px 6px;border-radius:20px;background:#ffffffa6;font-size:13px;letter-spacing:-.2px;transition:background .25s,color .25s}
 @media(hover:hover){.ins-inv-actions button:hover{background:#141518;color:#f6f3ee}}
-.ins-inv-list{list-style:none;margin:0;padding:0;overflow-y:auto;scrollbar-width:thin;display:flex;flex-direction:column;gap:4px}
+.ins-inv-list{list-style:none;margin:0;padding:0;overflow-y:auto;scrollbar-width:thin;display:flex;flex-direction:column;gap:6px}
 .ins-inv-item{border-radius:16px;background:#ffffff8c;transition:background .3s,opacity .3s}
 .ins-inv-item.is-off{background:#ffffff40}
-.ins-inv-item.is-off .ins-inv-name{color:var(--muted)}
-.ins-inv-row{display:flex;align-items:center;gap:10px;padding:9px 10px 9px 12px}
-.ins-inv-name{flex:1;display:flex;align-items:center;gap:10px;min-width:0;font-size:15px;letter-spacing:-.25px;cursor:pointer;transition:color .3s}
+.ins-inv-row{display:flex;align-items:center;gap:10px;padding:7px 12px 7px 7px}
+.ins-inv-name{flex:1;display:flex;align-items:center;gap:12px;min-width:0;cursor:pointer}
 .ins-inv-name input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
-.ins-inv-check{flex:none;width:20px;height:20px;border-radius:7px;border:1.5px solid #24242566;display:grid;place-items:center;transition:background .25s,border-color .25s}
-.ins-inv-check:after{content:'';width:9px;height:5px;border-left:1.8px solid #fff;border-bottom:1.8px solid #fff;transform:translateY(-1px) rotate(-45deg);opacity:0;transition:opacity .2s}
-.ins-inv-name input:checked+.ins-inv-check{background:#141518;border-color:#141518}
-.ins-inv-name input:checked+.ins-inv-check:after{opacity:1}
-.ins-inv-name input:focus-visible+.ins-inv-check{outline:2px solid var(--ink);outline-offset:2px}
-.ins-inv-swatches{display:flex;gap:6px}
+/* Preview tile: the part rendered on the studio grey of the Inspect stage. */
+.ins-inv-thumb{position:relative;flex:none;width:78px;height:58px;border-radius:13px;overflow:hidden;background:radial-gradient(120% 110% at 50% 28%,#fbfbfa 0%,#e9e9e7 55%,#d6d6d4 100%);box-shadow:inset 0 0 0 1px #0000000f,0 1px 2px #14151808;transition:box-shadow .3s,background .3s}
+.ins-inv-thumb img{display:block;width:100%;height:100%;object-fit:contain;transform:scale(.98);transition:transform .6s cubic-bezier(.22,1,.36,1),filter .35s,opacity .35s}
+.ins-inv-thumb img:not([src]){opacity:0}
+@media(hover:hover){.ins-inv-item:hover .ins-inv-thumb img{transform:scale(1.07)}}
+.ins-inv-check{position:absolute;left:6px;top:6px;width:18px;height:18px;border-radius:6px;background:#ffffffd9;box-shadow:inset 0 0 0 1.5px #24242559;display:grid;place-items:center;transition:background .25s,box-shadow .25s}
+.ins-inv-check:after{content:'';width:8px;height:4.5px;border-left:1.7px solid #fff;border-bottom:1.7px solid #fff;transform:translateY(-1px) rotate(-45deg);opacity:0;transition:opacity .2s}
+.ins-inv-name input:checked+.ins-inv-thumb .ins-inv-check{background:#141518;box-shadow:none}
+.ins-inv-name input:checked+.ins-inv-thumb .ins-inv-check:after{opacity:1}
+.ins-inv-name input:focus-visible+.ins-inv-thumb{box-shadow:inset 0 0 0 1px #0000000f,0 0 0 2px var(--ink)}
+.ins-inv-text{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ins-inv-title{font-size:15px;line-height:1.15;letter-spacing:-.3px;transition:color .3s}
+.ins-inv-note{font-size:12px;line-height:1.25;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Removed parts: a faded, greyed preview with an empty check. */
+.ins-inv-item.is-off .ins-inv-thumb{background:#ececea80;box-shadow:inset 0 0 0 1px #24242526}
+.ins-inv-item.is-off .ins-inv-thumb img{filter:grayscale(1);opacity:.38}
+.ins-inv-item.is-off .ins-inv-title{color:var(--muted)}
+.ins-inv-swatches{display:flex;flex-direction:column;gap:6px}
 .ins-inv-swatch{width:24px;height:24px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1px #0000001f,0 0 0 2px #ffffffcc;transition:transform .25s,box-shadow .25s}
 .ins-inv-swatch:hover,.ins-inv-swatch[aria-expanded="true"]{transform:scale(1.12);box-shadow:inset 0 0 0 1px #0000001f,0 0 0 2px #141518}
 .ins-inv-palette{padding:2px 12px 12px}
@@ -136,6 +141,14 @@ a{color:inherit;text-decoration:none}
   .ins-inventory[data-open="true"]{left:var(--gutter);width:auto;max-height:min(44vh,calc(100% - 340px))}
   .ins-inv-toggle{padding:12px 16px;font-size:15px}
   .ins-inv-hint{display:none}
+  .ins-inv-thumb{width:66px;height:50px}
   /* Keep the boat in view while the sheet is open: the title steps aside. */
   .ins:has(.ins-inventory[data-open="true"]) .ins-copy{opacity:0;transition:opacity .3s}
 }
+/* Variant switch (deck size): a small segmented control under the row. */
+.ins-inv-variants{display:flex;gap:4px;margin:0 12px 10px 97px;padding:3px;border-radius:20px;background:#14151810}
+.ins-inv-variant{flex:1;padding:6px 10px;border-radius:16px;font-size:13px;letter-spacing:-.2px;color:var(--muted);transition:background .3s,color .3s,box-shadow .3s}
+.ins-inv-variant[aria-pressed="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 4px #14151814}
+@media(hover:hover){.ins-inv-variant:not([aria-pressed="true"]):hover{color:var(--ink)}}
+.ins-inv-item.is-off .ins-inv-variants{opacity:.5}
+@media(max-width:760px){.ins-inv-variants{margin-left:85px}}

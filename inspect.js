@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { setupInventory } from './inspect-inventory.js';
+import { setupInventory, widenZ } from './inspect-inventory.js';
 
 const MODEL = './assets/inspect/esmi-eboat.glb';
 const $ = s => document.querySelector(s);
@@ -150,6 +150,79 @@ function applyExplode() {
   mixer.setTime(Math.min(tAssembled - 1e-4, tAssembled - explodeNow * (tAssembled - tExploded)));
 }
 
+/* ------------------------------------------------------------ part previews -- */
+// Render one inventory group on its own, assembled, from a three-quarter angle, and return
+// it as an image. It borrows a corner of the main canvas for one draw, copies the pixels
+// out in the same task (before the browser shows the frame) and then redraws the scene.
+const thumbCamera = new THREE.PerspectiveCamera(28, 1, 0.05, 200);
+const thumbView = bl(1, -1.25, 0.8).normalize();
+function renderPartPreview(model, nodes, width = 96, height = 72) {
+  const ratio = renderer.getPixelRatio();
+  const out = document.createElement('canvas');
+  out.width = Math.round(width * ratio); out.height = Math.round(height * ratio);
+  const visible = model.children.map(n => n.visible);
+  const shown = new Set(nodes);
+  model.children.forEach(n => { n.visible = shown.has(n); });
+  if (mixer) mixer.setTime(tAssembled - 1e-4);
+  const box = new THREE.Box3();
+  nodes.forEach(n => box.expandByObject(n));
+  const sphere = box.getBoundingSphere(new THREE.Sphere());
+  thumbCamera.aspect = width / height;
+  const fit = Math.min(Math.sin(THREE.MathUtils.degToRad(thumbCamera.fov / 2)), Math.sin(Math.atan(Math.tan(THREE.MathUtils.degToRad(thumbCamera.fov / 2)) * thumbCamera.aspect)));
+  thumbCamera.position.copy(sphere.center).addScaledVector(thumbView, sphere.radius / fit * 1.04);
+  thumbCamera.near = Math.max(0.01, sphere.radius * 0.05); thumbCamera.far = sphere.radius * 20 + 10;
+  thumbCamera.lookAt(sphere.center);
+  thumbCamera.clearViewOffset();
+  thumbCamera.updateProjectionMatrix();
+  thumbCamera.updateMatrixWorld();
+  // Tighten the framing to the part's projected outline (the sphere is loose for flat or
+  // long parts): crop the view window around the box corners with a small margin.
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  const corner = new THREE.Vector3();
+  for (let i = 0; i < 8; i++) {
+    corner.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).project(thumbCamera);
+    x0 = Math.min(x0, corner.x); x1 = Math.max(x1, corner.x); y0 = Math.min(y0, corner.y); y1 = Math.max(y1, corner.y);
+  }
+  const span = Math.min(1, Math.max((x1 - x0) / 2, (y1 - y0) / 2) / 0.8);
+  const vw = width * span, vh = height * span;
+  thumbCamera.setViewOffset(width, height, (width - vw) / 2 + (x0 + x1) / 4 * width, (height - vh) / 2 - (y0 + y1) / 4 * height, vw, vh);
+  const groundVisible = ground.visible; ground.visible = false;
+  const clear = renderer.getClearAlpha();
+  renderer.setScissorTest(true);
+  renderer.setViewport(0, 0, width, height); renderer.setScissor(0, 0, width, height);
+  renderer.setClearAlpha(0); renderer.clear();
+  renderer.render(scene, thumbCamera);
+  const source = renderer.domElement;
+  out.getContext('2d').drawImage(source, 0, source.height - out.height, out.width, out.height, 0, 0, out.width, out.height);
+  // Put everything back and redraw the real view in the same task.
+  renderer.setScissorTest(false);
+  renderer.setViewport(0, 0, innerWidth, innerHeight);
+  renderer.setClearAlpha(clear);
+  ground.visible = groundVisible;
+  model.children.forEach((n, i) => { n.visible = visible[i]; });
+  applyExplode();
+  renderer.render(scene, camera);
+  return out.toDataURL('image/png');
+}
+
+/* ------------------------------------------------------------ boat width ---- */
+// After the inventory switches between the standard and the wide (×2 beam) boat: refit the
+// overview to the assembled boat and move the close-up views across with the parts.
+const BASE_VIEWS = Object.fromEntries(Object.entries(VIEWS).map(([k, v]) => [k, { ...v, target: v.target.clone(), position: v.position.clone() }]));
+function relayout(model, wide, animate) {
+  if (mixer) mixer.setTime(tAssembled - 1e-4);
+  model.updateMatrixWorld(true);
+  fitOverview(model);
+  applyExplode();
+  for (const [k, base] of Object.entries(BASE_VIEWS)) {
+    const dz = wide ? widenZ(base.target.z) - base.target.z : 0;
+    VIEWS[k] = { ...base, target: base.target.clone().setZ(base.target.z + dz), position: base.position.clone().setZ(base.position.z + dz) };
+  }
+  if (!animate) { if (flight) flight.to = overview; return; }
+  document.querySelectorAll('.ins-view').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === 'overview')));
+  fly(overview, 1.1);
+}
+
 /* ------------------------------------------------------------ load ---------- */
 const loader = new GLTFLoader();
 loader.load(MODEL, gltf => {
@@ -184,7 +257,11 @@ loader.load(MODEL, gltf => {
   // Arrive with a short dolly-in.
   camera.position.addScaledVector(camera.position.clone().sub(controls.target).normalize(), 1.6);
   fly(overview, 1.6);
-  setupInventory(model, { reduced: reduced.matches });
+  setupInventory(model, {
+    reduced: reduced.matches, clips: gltf.animations, Box3: THREE.Box3,
+    preview: nodes => renderPartPreview(model, nodes),
+    onLayout: (wide, animate) => relayout(model, wide, animate),
+  });
   status.classList.add('is-done');
   root.classList.add('ins-ready');
 }, event => {
@@ -200,23 +277,6 @@ function showFallback(message) {
   statusText.textContent = message;
   document.querySelectorAll('.ins-views, .ins-tools, .ins-inventory').forEach(el => { el.hidden = true; });
 }
-
-/* ------------------------------------------------------------ cursor -------- */
-const cursor = $('.ins-cursor');
-const ring = { x: -100, y: -100, tx: -100, ty: -100, s: 1, ts: 1, seen: false };
-let dragging = false;
-addEventListener('pointermove', event => {
-  if (event.pointerType !== 'mouse') return;
-  if (!ring.seen) { ring.x = ring.tx = event.clientX; ring.y = ring.ty = event.clientY; ring.seen = true; }
-  ring.tx = event.clientX; ring.ty = event.clientY;
-  root.classList.add('ins-pointer');
-  const control = event.target.closest?.('a, button, input, label');
-  root.dataset.cursorMode = dragging ? 'drag' : control ? 'control' : 'scene';
-  ring.ts = dragging ? 0.75 : control ? 1.55 : 1;
-}, { passive: true });
-canvas.addEventListener('pointerdown', () => { dragging = true; root.dataset.cursorMode = 'drag'; ring.ts = 0.75; });
-addEventListener('pointerup', () => { dragging = false; root.dataset.cursorMode = 'scene'; ring.ts = 1; });
-document.addEventListener('pointerleave', () => root.classList.remove('ins-pointer'));
 
 /* ------------------------------------------------------------ inventory room -- */
 // While the inventory is open, slide (and on small screens shrink) the rendered view so the
@@ -261,10 +321,6 @@ function frame(now) {
   controls.update();
   applyShift(dt);
   renderer.render(scene, camera);
-  const follow = 1 - Math.exp(-dt / 0.045);
-  ring.x += (ring.tx - ring.x) * follow; ring.y += (ring.ty - ring.y) * follow;
-  ring.s += (ring.ts - ring.s) * (1 - Math.exp(-dt / 0.08));
-  cursor.style.transform = `translate3d(${ring.x.toFixed(1)}px,${ring.y.toFixed(1)}px,0) scale(${ring.s.toFixed(3)})`;
 }
 renderer.setAnimationLoop(frame);
 document.addEventListener('visibilitychange', () => renderer.setAnimationLoop(document.hidden ? null : frame));

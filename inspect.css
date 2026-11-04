@@ -152,3 +152,19 @@ a{color:inherit;text-decoration:none}
 @media(hover:hover){.ins-inv-variant:not([aria-pressed="true"]):hover{color:var(--ink)}}
 .ins-inv-item.is-off .ins-inv-variants{opacity:.5}
 @media(max-width:760px){.ins-inv-variants{margin-left:85px}}
+
+/* Customizer (inspect.html?part=<id>): one part on its own, opened from the part cards. */
+.ins-back{display:none;pointer-events:auto;margin:0 0 18px;font-size:15px;letter-spacing:-.2px;color:var(--muted);transition:color .25s}
+.ins-back:hover{color:var(--ink)}
+.ins-part-mode .ins-back{display:inline-block}
+.ins-part-mode .ins-views,.ins-part-mode .ins-explode{display:none!important}
+.ins-part-mode .ins-copy h1>span{white-space:normal}
+.is-customizer .ins-inv-name{cursor:default}
+.is-customizer .ins-inv-check{display:none}
+.is-customizer .ins-inv-palette{padding-top:6px}
+.ins-inv-steps{display:flex;align-items:center;gap:6px;margin:0 0 10px}
+.ins-inv-steps button,.ins-inv-allparts,.ins-inv-onboat{padding:8px 12px;border-radius:20px;background:#ffffffa6;font-size:13px;letter-spacing:-.2px;white-space:nowrap;transition:background .25s,color .25s}
+.ins-inv-allparts{flex:1;text-align:center}
+.is-customizer .ins-inv-actions .ins-inv-onboat{flex:1.4;text-align:center;padding:8px 6px;border-radius:20px;background:#141518;color:#f6f3ee;font-size:13px}
+@media(hover:hover){.ins-inv-steps button:hover,.ins-inv-allparts:hover{background:#141518;color:#f6f3ee}}
+.is-customizer .ins-inv-actions{margin:10px 0 0}

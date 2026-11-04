@@ -81,16 +81,19 @@ const VIEWS = {
   drive: { target: bl(-1.9, 0, -0.55),    position: bl(-5.8, -0.9, -0.15), explode: 0.45 },
 };
 let overview = null;
-function fitOverview(object) {
-  const box = new THREE.Box3().setFromObject(object), sphere = box.getBoundingSphere(new THREE.Sphere());
+function fitOverview(object, margin = 0.92) {
+  const box = new THREE.Box3();
+  (Array.isArray(object) ? object : [object]).forEach(o => box.expandByObject(o));
+  const sphere = box.getBoundingSphere(new THREE.Sphere());
   const az = THREE.MathUtils.degToRad(-57), el = THREE.MathUtils.degToRad(18);
   const dir = bl(Math.cos(el) * Math.cos(az), Math.cos(el) * Math.sin(az), Math.sin(el)).normalize();
   const fov = THREE.MathUtils.degToRad(camera.fov), fitH = sphere.radius / Math.sin(fov / 2);
   const fitW = sphere.radius / Math.sin(Math.atan(Math.tan(fov / 2) * camera.aspect));
-  const distance = Math.max(fitH, fitW) * 0.92;
+  const distance = Math.max(fitH, fitW) * margin;
   const target = sphere.center.clone().add(new THREE.Vector3(0, -sphere.radius * 0.06, 0));
   overview = { target, position: target.clone().addScaledVector(dir, distance) };
   controls.maxDistance = distance * 2.2;
+  controls.minDistance = Math.min(1.1, distance * 0.3);
   VIEWS.overview = overview;
 }
 
@@ -205,6 +208,28 @@ function renderPartPreview(model, nodes, width = 96, height = 72) {
   return out.toDataURL('image/png');
 }
 
+/* ------------------------------------------------------------ customizer ---- */
+// inspect.html?part=<id> (from the part cards on the homepage): show that part alone, framed
+// on its own, with its colours in the panel. The inventory module handles which part is on
+// show; this frames the camera and retitles the page.
+const PART = new URLSearchParams(location.search).get('part');
+let focusNodes = null;
+if (PART) root.classList.add('ins-part-mode');
+function focusPart(model, nodes, info, animate) {
+  focusNodes = nodes;
+  if (mixer) mixer.setTime(tAssembled - 1e-4);
+  setExplode(0);
+  model.updateMatrixWorld(true);
+  fitOverview(nodes, 1.15);                       // a little looser: the part sits beside the panel
+  applyExplode();
+  $('.ins-eyebrow').textContent = `CUSTOMIZE · ${String(info.number).padStart(2, '0')} / ${info.total}`;
+  $('#ins-title').innerHTML = `<span class="ins-serif">${info.name}.</span><span class="ins-sans">Made yours.</span>`;
+  $('.ins-hint').textContent = `${info.note}. Drag to rotate, scroll or pinch to zoom.`;
+  document.title = `Customize the ${info.name.toLowerCase()} | ESMI E-Boat`;
+  if (animate || !flight) fly(overview, animate ? 1.1 : 1.6);
+  else flight.to = overview;
+}
+
 /* ------------------------------------------------------------ boat width ---- */
 // After the inventory switches between the standard and the wide (×2 beam) boat: refit the
 // overview to the assembled boat and move the close-up views across with the parts.
@@ -212,7 +237,7 @@ const BASE_VIEWS = Object.fromEntries(Object.entries(VIEWS).map(([k, v]) => [k, 
 function relayout(model, wide, animate) {
   if (mixer) mixer.setTime(tAssembled - 1e-4);
   model.updateMatrixWorld(true);
-  fitOverview(model);
+  fitOverview(focusNodes || model, focusNodes ? 1.15 : 0.92);
   applyExplode();
   for (const [k, base] of Object.entries(BASE_VIEWS)) {
     const dz = wide ? widenZ(base.target.z) - base.target.z : 0;
@@ -261,6 +286,8 @@ loader.load(MODEL, gltf => {
     reduced: reduced.matches, clips: gltf.animations, Box3: THREE.Box3,
     preview: nodes => renderPartPreview(model, nodes),
     onLayout: (wide, animate) => relayout(model, wide, animate),
+    part: PART,
+    onFocus: (nodes, info, animate) => focusPart(model, nodes, info, animate),
   });
   status.classList.add('is-done');
   root.classList.add('ins-ready');

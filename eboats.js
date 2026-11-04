@@ -11,17 +11,23 @@
 
 import { underwaterPlunge } from './ui-sound.js';
 
+// One card per part of the boat (the same groups as the Inspect inventory). Each image is a
+// studio render of that part alone (scripts/blender/render_part_cards.py); a card opens the
+// part on its own in the Inspect customizer (inspect.html?part=<id>).
 const ITEMS = [
-  { title: 'The Twin Hulls', tags: 'Silver topsides, charcoal keels', group: 'Engineering', img: './assets/eboats/hulls.webp', go: { chapter: 'Hull' } },
-  { title: 'Electric Drive', tags: 'Pod motor and propeller', group: 'Engineering', img: './assets/eboats/drive.webp', go: { chapter: 'Drive' } },
-  { title: 'Battery Pack', tags: 'Eight modules under the deck', group: 'Energy', img: './assets/eboats/battery.webp', go: { chapter: 'Battery' } },
-  { title: 'Every Connection', tags: 'Controllers and cable looms', group: 'Engineering', img: './assets/eboats/wiring.webp', go: { chapter: 'Wiring' } },
-  { title: 'Seating for Four', tags: 'Bucket seats, open views', group: 'Comfort', img: './assets/eboats/seating.webp', go: { chapter: 'Seating' } },
-  { title: 'The Helm', tags: 'ESMI console and steering', group: 'Comfort', img: './assets/eboats/helm.webp', go: { chapter: 'Helm' } },
-  { title: 'Solar Canopy', tags: 'Twelve photovoltaic modules', group: 'Energy', img: './assets/eboats/solar.webp', go: { chapter: 'Solar' } },
-  { title: 'The Film', tags: 'From the sun. To the sea.', group: 'Film', img: './assets/eboats/film.webp', go: { film: true } },
+  { title: 'Twin Hulls', tags: 'Port and starboard pontoons', group: 'Structure', img: './assets/eboats/parts/hulls.webp', go: { part: 'hulls' } },
+  { title: 'Crossbeams', tags: 'Aluminium cross-structure', group: 'Structure', img: './assets/eboats/parts/crossbeams.webp', go: { part: 'crossbeams' } },
+  { title: 'The Deck', tags: 'Non-slip deck panels', group: 'Structure', img: './assets/eboats/parts/deck.webp', go: { part: 'deck' } },
+  { title: 'Railings', tags: 'Rails, posts and corners', group: 'Structure', img: './assets/eboats/parts/railings.webp', go: { part: 'railings' } },
+  { title: 'Seating', tags: 'Bucket seats, open views', group: 'Comfort', img: './assets/eboats/parts/seats.webp', go: { part: 'seats' } },
+  { title: 'The Helm', tags: 'Console, wheel and screen', group: 'Comfort', img: './assets/eboats/parts/helm.webp', go: { part: 'helm' } },
+  { title: 'Canopy Frame', tags: 'Uprights and roof frame', group: 'Structure', img: './assets/eboats/parts/canopy.webp', go: { part: 'canopy' } },
+  { title: 'Solar Panels', tags: 'Twelve photovoltaic modules', group: 'Energy', img: './assets/eboats/parts/solar.webp', go: { part: 'solar' } },
+  { title: 'Electric Drive', tags: 'Pod motor and propeller', group: 'Drive', img: './assets/eboats/parts/drive.webp', go: { part: 'drive' } },
+  { title: 'Battery Pack', tags: 'Eight modules and BMS', group: 'Energy', img: './assets/eboats/parts/batteries.webp', go: { part: 'batteries' } },
+  { title: 'Every Connection', tags: 'Cable looms and controllers', group: 'Energy', img: './assets/eboats/parts/wiring.webp', go: { part: 'wiring' } },
 ];
-const GROUPS = ['All', 'Engineering', 'Energy', 'Comfort', 'Film'];
+const GROUPS = ['All', 'Structure', 'Comfort', 'Energy', 'Drive'];
 const EASE_IN_OUT = 'cubic-bezier(.76,0,.24,1)';
 const EASE_OUT = 'cubic-bezier(.22,1,.36,1)';
 
@@ -793,15 +799,16 @@ function filter(group) {
 }
 
 async function choose(item) {
-  if (item.go.film) {
-    await close(() => document.dispatchEvent(new CustomEvent('esmi:landing-action', { detail: { action: 'film' } })));
-    return;
-  }
-  // The assembly now lives on its own page; open it at this card's chapter.
-  await close(() => { location.href = `./engineering.html#${encodeURIComponent(item.go.chapter)}`; });
+  // Open this part on its own in the Inspect customizer.
+  await close(() => { location.href = `./inspect.html?part=${encodeURIComponent(item.go.part)}`; });
 }
 
 document.addEventListener('esmi:landing-action', event => {
   if (event.detail?.action === 'eboats') openHighlights();
 });
+// "All parts" in the Inspect customizer links to ./#parts: open straight onto the cards.
+if (location.hash === '#parts') {
+  history.replaceState(null, '', location.pathname + location.search);
+  setTimeout(openHighlights, 700);
+}
 addEventListener('resize', () => { if (open && !raf) raf = requestAnimationFrame(frame); clearTimeout(drawLabels.t); drawLabels.t = setTimeout(drawLabels, 150); });

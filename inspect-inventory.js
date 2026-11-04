@@ -133,7 +133,7 @@ function setWidth(model, clips, wide) {
   }
 }
 
-export function setupInventory(model, { reduced = false, preview = null, clips = [], Box3 = null, onLayout = null } = {}) {
+export function setupInventory(model, { reduced = false, preview = null, clips = [], Box3 = null, onLayout = null, part = null, onFocus = null } = {}) {
   const panel = document.querySelector('.ins-inventory');
   if (!panel) return;
   const list = panel.querySelector('.ins-inv-list');
@@ -334,4 +334,56 @@ export function setupInventory(model, { reduced = false, preview = null, clips =
   setOpen(innerWidth >= 1100);
   toggle.addEventListener('click', () => setOpen(panel.dataset.open !== 'true'));
   panel.hidden = false;
+
+  // Customizer (inspect.html?part=<id>, opened from the part cards): only that part is shown
+  // and the panel holds just its colours and options, with previous / next to step through
+  // the parts. Nothing here is saved as hidden, so the full boat is unaffected; colours are
+  // the same saved choices, so they carry over to the boat.
+  const start = live.findIndex(it => it.id === part);
+  if (part && start >= 0) {
+    panel.classList.add('is-customizer');
+    list.querySelectorAll('.ins-inv-name input').forEach(box => { box.disabled = true; });
+    toggle.querySelector('span').textContent = 'Customize';
+    panel.querySelector('.ins-inv-hint').textContent = 'Pick a colour for each finish. Your choices also show on the full boat.';
+    const nav = document.createElement('div');
+    nav.className = 'ins-inv-steps';
+    nav.innerHTML = `<button type="button" data-step="-1" aria-label="Previous part">← Prev</button>
+      <a class="ins-inv-allparts" href="./#parts">All parts</a>
+      <button type="button" data-step="1" aria-label="Next part">Next →</button>`;
+    panel.querySelector('.ins-inv-actions').replaceWith(nav);
+    const actions = document.createElement('div');
+    actions.className = 'ins-inv-actions';
+    actions.innerHTML = '<a class="ins-inv-onboat" href="./inspect.html">See it on the boat</a><button type="button" data-inv="colors-part">Reset colours</button>';
+    panel.querySelector('.ins-inv-body').append(actions);
+    let index = start;
+    const focus = (i, animate) => {
+      index = (i + live.length) % live.length;
+      const item = live[index];
+      for (const it of live) {
+        it.nodes.forEach(n => { n.visible = it === item; n.scale.set(1, 1, n.userData.baseZ || 1); });
+        const li = list.querySelector(`[data-item="${it.id}"]`);
+        li.hidden = it !== item;
+        li.querySelectorAll('.ins-inv-palette').forEach(p => { p.hidden = it !== item; });
+        li.querySelectorAll('.ins-inv-swatch').forEach(sw => sw.setAttribute('aria-expanded', String(it === item)));
+      }
+      if (animate) pop(item.nodes, reduced);
+      count.textContent = `${String(index + 1).padStart(2, '0')} / ${live.length}`;
+      history.replaceState(null, '', `?part=${item.id}`);
+      const note = list.querySelector(`[data-item="${item.id}"] .ins-inv-note`)?.textContent || item.note;
+      onFocus?.(item.nodes, { id: item.id, name: item.name, note, number: index + 1, total: live.length }, animate);
+    };
+    nav.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => focus(index + Number(b.dataset.step), true)));
+    actions.querySelector('button').addEventListener('click', () => {
+      const li = list.querySelector(`[data-item="${live[index].id}"]`);
+      for (const paint of live[index].paints) {
+        if (!paint.clones.length) continue;
+        li.querySelector(`.ins-inv-palette [data-color="${paint.original}"]`)?.click();
+      }
+    });
+    // The width switch changes the whole boat; keep only the focused part on show afterwards.
+    const relayout = onLayout;
+    onLayout = (wide, animate) => { relayout?.(wide, animate); focus(index, false); };
+    setOpen(true);
+    focus(index, false);
+  }
 }

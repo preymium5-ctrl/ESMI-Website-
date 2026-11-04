@@ -129,4 +129,4 @@ html[data-page="engineering"] .footer-note{font-size:15px;color:var(--eng-muted)
 @media(prefers-reduced-motion:reduce){html[data-page="engineering"] .media-stage{transform:none}html[data-page="engineering"] .eng-cursor{display:none}}
 /* ESMI wave mark beside the wordmark. */
 html[data-page="engineering"] .eng-logo{display:inline-flex;align-items:center}
-html[data-page="engineering"] .eng-logo>.logo-mark{height:1em;width:auto;margin:0 .1em 0 -.13em;flex:none}
+html[data-page="engineering"] .eng-logo>.logo-mark{height:1.15em;width:auto;margin:0 .22em 0 0;flex:none}

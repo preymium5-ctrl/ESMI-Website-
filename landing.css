@@ -167,4 +167,4 @@ html.landing-scroll-locked{overflow:hidden;overscroll-behavior:none}
 .landing-root{height:calc(100vh + 1px);height:calc(100dvh + 1px)}
 /* ESMI wave mark beside the wordmark. */
 .landing-logo{align-items:center}
-.landing-logo>.logo-mark{height:1em;width:auto;margin:0 .1em 0 -.13em;flex:none}
+.landing-logo>.logo-mark{height:1.15em;width:auto;margin:0 .22em 0 0;flex:none}
